@@ -153,6 +153,11 @@ async function generateContentWithAi({
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Auto-detect Railway production environment
+if (process.env.RAILWAY_SERVICE_NAME) {
+  process.env.NODE_ENV = "production";
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
