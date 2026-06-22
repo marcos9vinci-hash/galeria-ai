@@ -160,7 +160,7 @@ if (process.env.RAILWAY_SERVICE_NAME) {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.use(cookieParser());
   app.use(express.json({ limit: "50mb" }));
