@@ -1,0 +1,6 @@
+{
+  "name": "Galeria IA - Tattoo Content Studio",
+  "description": "Plataforma completa para criação, agendamento e análise de conteúdo para tatuadores com IA avançada.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["AI Image Analysis", "Social Media Planning", "Image Editing"]
+}
