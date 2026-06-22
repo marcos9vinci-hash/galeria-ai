@@ -525,6 +525,21 @@ async function startServer() {
     res.json({ url: authUrl });
   });
 
+  // 1b. Manual Token Login (bypass OAuth)
+  app.post("/api/auth/facebook/token", (req, res) => {
+    const { accessToken } = req.body;
+    if (!accessToken) {
+      return res.status(400).json({ error: "Token não fornecido" });
+    }
+    res.cookie("fb_access_token", accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 60 * 24 * 60 * 60 * 1000 // 60 days
+    });
+    res.json({ success: true });
+  });
+
   // 2. OAuth Callback
   app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
     const { code } = req.query;

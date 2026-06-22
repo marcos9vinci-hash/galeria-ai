@@ -322,6 +322,57 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
                   >
                     {loading ? "Estabelecendo Conexão..." : connected ? "Reconectar para Atualizar Permissões" : "Conectar via Meta Business Cloud"}
                   </Button>
+
+                  {/* Manual Token Option */}
+                  <details className="group">
+                    <summary className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer text-center py-2 list-none flex items-center justify-center gap-1">
+                      <span className="group-open:rotate-180 transition-transform">▾</span>
+                      Token de Acesso Manual
+                    </summary>
+                    <div className="mt-3 p-4 bg-muted/20 rounded-xl border border-dashed space-y-3">
+                      <p className="text-[10px] text-muted-foreground">
+                        Cole um token de acesso de página do Facebook (Graph API) com permissões de Instagram.
+                      </p>
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="EAAA... token da Graph API"
+                          className="text-xs bg-background"
+                          id="manual-token-input"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          className="shrink-0 text-xs"
+                          onClick={async () => {
+                            const input = document.getElementById('manual-token-input') as HTMLInputElement;
+                            const token = input?.value?.trim();
+                            if (!token) return;
+                            try {
+                              const resp = await fetch('/api/auth/facebook/token', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ accessToken: token })
+                              });
+                              if (resp.ok) {
+                                fetchAccounts();
+                                setError(null);
+                              } else {
+                                setError('Falha ao salvar token');
+                              }
+                            } catch (err: any) {
+                              setError(err.message);
+                            }
+                          }}
+                        >
+                          Conectar
+                        </Button>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground">
+                        Como obter: <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener" className="underline">Graph API Explorer</a> → 
+                        selecione seu app → permissões: <code className="text-[9px]">instagram_basic, pages_show_list</code> → 
+                        gere um token de <b>Página</b> (não de usuário) e cole acima.
+                      </p>
+                    </div>
+                  </details>
                 </motion.div>
               )}
 
