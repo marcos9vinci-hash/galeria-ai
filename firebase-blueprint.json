@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "ScheduledPost": {
+      "title": "Scheduled Post",
+      "description": "A scheduled post for Instagram",
+      "type": "object",
+      "properties": {
+        "igId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "caption": { "type": "string" },
+        "token": { "type": "string" },
+        "scheduledAt": { "type": "string", "format": "date-time" },
+        "published": { "type": "boolean" },
+        "error": { "type": "string" }
+      },
+      "required": ["igId", "imageUrl", "scheduledAt", "published"]
+    }
+  },
+  "firestore": {
+    "/scheduledPosts/{postId}": {
+      "schema": { "$ref": "ScheduledPost" },
+      "description": "Collection of scheduled Instagram posts"
+    }
+  }
+}

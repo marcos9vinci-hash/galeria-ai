@@ -26,7 +26,6 @@ import PlanoSemanal from "@/components/galeria/PlanoSemanal";
 import ConfigWhatsApp from "@/components/galeria/ConfigWhatsApp";
 import EstudioIAWorkflow from "@/components/galeria/EstudioIAWorkflow";
 import InstagramInsights from "@/components/galeria/InstagramInsights";
-import { BufferStatus } from "@/components/galeria/BufferStatus";
 import NicheConfig from "@/components/galeria/NicheConfig";
 
 const STATUS_OPTIONS_LOCAL = [
@@ -447,34 +446,11 @@ export default function GaleriaIA() {
               setShowIgModal(true);
             }} 
           />
-          <Badge 
-            variant="outline" 
-            className="hidden md:flex cursor-pointer gap-1.5 py-1 px-1.5 pr-3 text-[10px] font-bold border-primary/20 hover:bg-primary/5 bg-card"
-            onClick={() => {
-              setModalInitialTab("airtop");
-              setShowIgModal(true);
-            }}
-          >
-             <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                <Sparkles className="w-3 h-3 text-primary" />
-             </div>
-             <span>Airtop Gemini</span>
-          </Badge>
-          <NotificacoesBell 
-            posts={posts.filter(p => !dismissedNotifs.includes(p.id))} 
-            bufferPosts={bufferPosts.filter(p => !dismissedNotifs.includes(p.id))}
-            onClick={() => setShowNotifs(v => !v)} 
-          />
-          {quotaWarning && (
-            <Button variant="ghost" size="icon" className="rounded-full text-destructive animate-bounce" onClick={handleClearGallery} title="Memória Cheia! Clique para limpar.">
-               <AlertCircle className="w-5 h-5" />
-            </Button>
-          )}
           <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setShowConfigWhatsapp(true)}>
              <Settings2 className="w-5 h-5 text-muted-foreground" />
           </Button>
           <div className="hidden md:block">
-            <BufferStatus />
+
           </div>
           <Button 
             size="sm" 
@@ -587,7 +563,7 @@ export default function GaleriaIA() {
                       return (
                         <div
                           key={dayStr}
-                          className={`aspect-square relative rounded-2xl flex flex-col p-2 transition-all group border-2
+                          className={`aspect-square relative rounded-2xl flex flex-col transition-all group border-2 overflow-hidden
                             ${today ? 'bg-primary/5 border-primary shadow-[0_0_15px_-5px_rgba(var(--primary),0.3)]' : 'bg-card border-border/40'}
                             ${draggedPostId !== null ? 'hover:scale-105 hover:border-primary hover:shadow-xl' : ''}
                             ${dayPosts.length > 0 ? 'ring-offset-2 ring-primary/20' : ''}
@@ -596,13 +572,12 @@ export default function GaleriaIA() {
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => handleDrop(e, day)}
                         >
-                          <span className={`text-[10px] font-bold ${today ? 'text-primary' : 'text-muted-foreground'}`}>{format(day, 'd')}</span>
-                          
+                          {/* Image - Full Cover */}
                           {dayPosts.length > 0 && (
                             <div 
                               draggable 
                               onDragStart={(e) => handleDragStart(e, dayPosts[0].id)}
-                              className="mt-auto relative w-full h-[65%] rounded-xl overflow-hidden shadow-sm ring-1 ring-white/20 group/img cursor-pointer"
+                              className="absolute inset-0 cursor-pointer"
                             >
                               <img src={dayPosts[0].image} alt="" className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-150" />
                               <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ring-2 ring-white ${STATUS_OPTIONS_LOCAL.find(s => s.value === dayPosts[0].status)?.color || 'bg-gray-400'}`} />
@@ -625,6 +600,11 @@ export default function GaleriaIA() {
                               )}
                             </div>
                           )}
+
+                          {/* Day Number */}
+                          <span className={`absolute top-2 left-2 z-10 text-[10px] font-bold ${today ? 'text-primary' : 'text-muted-foreground'} ${dayPosts.length > 0 ? 'bg-black/50 text-white px-1.5 py-0.5 rounded-full' : ''}`}>
+                            {format(day, 'd')}
+                          </span>
                           
                           {dayPosts.length === 0 && (
                             <div className="flex-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isValidPost(data) {
+      return data.igId is string && data.igId.size() <= 128 && data.igId.matches('^[a-zA-Z0-9_\\-]+$')
+          && data.imageUrl is string && data.imageUrl.size() <= 2048
+          && data.scheduledAt is string
+          && data.published is bool;
+    }
+
+    match /scheduledPosts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidPost(request.resource.data) && request.resource.data.published == false;
+      allow update: if isSignedIn() && isValidPost(request.resource.data)
+        && request.resource.data.published == resource.data.published // prevent status change
+        && request.resource.data.igId == resource.data.igId; // immutable fields
+      allow delete: if isSignedIn();
+    }
+  }
+}

@@ -9,10 +9,22 @@ import dotenv from "dotenv";
 import sharp from "sharp";
 import { GoogleGenAI, Type } from "@google/genai";
 import FormData from "form-data";
+import * as admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import { getNicheConfig, saveNicheConfig, addHashtag, removeHashtag, addProfile, removeProfile, saveScheduleHours } from "./nicheConfig.js";
 import { detectNicheFromProfile, buildNicheIntelligence } from "./nicheAnalyzer.js";
 
+admin.initializeApp();
+const db = getFirestore();
+
 dotenv.config();
+
+console.log("[System] Checking environment variables...");
+if (!process.env.GEMINI_API_KEY) {
+  console.error("[System Error] GEMINI_API_KEY is NOT set in environment variables!");
+} else {
+  console.log("[System] GEMINI_API_KEY is configured.");
+}
 
 const getCleanApiKey = (): string | undefined => {
   const rawKey = process.env.GEMINI_API_KEY;
@@ -34,11 +46,6 @@ const isOpenRouterKey = (key: string): boolean => {
   return typeof key === 'string' && key.startsWith('sk-or-v1-');
 };
 
-const isOpenCodeKey = (key: string): boolean => {
-  // OpenCode Zen keys start with 'sk-' but not 'sk-or-v1-'
-  return typeof key === 'string' && key.startsWith('sk-') && !key.startsWith('sk-or-v1-');
-};
-
 async function generateContentWithAi({
   modelName,
   prompt,
@@ -55,10 +62,10 @@ async function generateContentWithAi({
     throw new Error("GEMINI_API_KEY não configurada no servidor.");
   }
 
-  // ─── OpenRouter ──────────────────────────────────────────────────────
   if (isOpenRouterKey(apiKey)) {
     console.log("[Studio AI Proxy] Routing call to OpenRouter with key:", apiKey.substring(0, 15) + "...");
     
+    // Choose model for OpenRouter
     let orModel = 'google/gemini-2.5-flash';
     if (modelName.includes('3.5')) {
       orModel = 'google/gemini-2.5-pro';
@@ -94,80 +101,33 @@ async function generateContentWithAi({
       console.error("[OpenRouter Error]", err.response?.data || err.message);
       throw new Error(`Erro na API do OpenRouter: ${err.response?.data?.error?.message || err.message}`);
     }
+  } else {
+    console.log("[Studio AI Proxy] Direct Gemini SDK call...");
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: jsonMode ? {
+        responseMimeType: "application/json",
+        responseSchema: responseSchema
+      } : undefined
+    });
+    return { text: response.text };
   }
-
-  // ─── OpenCode Zen ────────────────────────────────────────────────────
-  if (isOpenCodeKey(apiKey)) {
-    console.log("[Studio AI Proxy] Routing call to OpenCode Zen with key:", apiKey.substring(0, 15) + "...");
-
-    let ocModel = 'google/gemini-2.5-flash';
-    if (modelName.includes('3.5')) {
-      ocModel = 'google/gemini-2.5-pro';
-    }
-
-    try {
-      const response = await axios.post(
-        "https://opencode.ai/zen/v1/chat/completions",
-        {
-          model: ocModel,
-          messages: [
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          response_format: jsonMode ? { type: "json_object" } : undefined
-        },
-        {
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://inkdream.tattoo",
-            "X-Title": "InkDream Tattoo Studio"
-          },
-          timeout: 45000
-        }
-      );
-
-      const text = response.data?.choices?.[0]?.message?.content || "";
-      return { text };
-    } catch (err: any) {
-      console.error("[OpenCode Error]", err.response?.data || err.message);
-      throw new Error(`Erro na API do OpenCode: ${err.response?.data?.error?.message || err.message}`);
-    }
-  }
-
-  // ─── Gemini SDK (fallback) ───────────────────────────────────────────
-  console.log("[Studio AI Proxy] Direct Gemini SDK call...");
-  const response = await ai.models.generateContent({
-    model: modelName,
-    contents: prompt,
-    config: jsonMode ? {
-      responseMimeType: "application/json",
-      responseSchema: responseSchema
-    } : undefined
-  });
-  return { text: response.text };
 }
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Auto-detect Railway production environment
-if (process.env.RAILWAY_SERVICE_NAME) {
-  process.env.NODE_ENV = "production";
-}
-
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = 3000;
 
   app.use(cookieParser());
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // --- Scheduler DB Storage ---
-  const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
+const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   const loadScheduledPosts = (): any[] => {
     if (!fs.existsSync(SCHEDULED_POSTS_PATH)) return [];
     try {
@@ -181,6 +141,13 @@ async function startServer() {
   const saveScheduledPosts = (posts: any[]): void => {
     try {
       fs.writeFileSync(SCHEDULED_POSTS_PATH, JSON.stringify(posts, null, 2), "utf-8");
+      
+      // Persist to Firestore asynchronously
+      for (const post of posts) {
+        if (!post.id) post.id = post.igId + "_" + (post.scheduledAt?.toString() || Date.now()); 
+        db.collection('scheduledPosts').doc(post.id).set(post)
+          .catch(e => console.error("[Scheduler] Error saving to Firestore:", e));
+      }
     } catch (e) {
       console.error("[Scheduler] Error saving scheduled posts to disk:", e);
     }
@@ -397,13 +364,13 @@ async function startServer() {
       try {
         const response = await axios.get(`https://graph.facebook.com/v21.0/${containerId}`, {
           params: {
-            fields: "status_code,status,status_message",
+            fields: "status_code,status",
             access_token: accessToken
           }
         });
         
-        const { status_code, status, status_message } = response.data;
-        console.log(`[MetaPolling] Tentativa ${i+1}/${maxRetries}: Status = ${status_code} | Msg: ${status_message || 'N/A'}`);
+        const { status_code, status } = response.data;
+        console.log(`[MetaPolling] Tentativa ${i+1}/${maxRetries}: Status = ${status_code}`);
         
         if (status_code === "FINISHED") {
           return true;
@@ -438,6 +405,7 @@ async function startServer() {
         console.log(`[Scheduler] Tentando publicar post agendado... URL: ${post.imageUrl}`);
         
         // A: Create Media Container
+        console.log(`[Scheduler] Criando recipiente para URL: ${post.imageUrl} e igId: ${post.igId}`);
         const containerResponse = await axios({
           method: 'post',
           url: `https://graph.facebook.com/v21.0/${post.igId}/media`,
@@ -455,6 +423,7 @@ async function startServer() {
         // Wait for Meta to finish processing via Polling
         await waitForMediaContainer(creationId, post.token);
 
+        console.log(`[Scheduler] Publicando recipiente (ID: ${creationId})...`);
         // B: Publish Media
         await axios({
           method: 'post',
@@ -523,21 +492,6 @@ async function startServer() {
     const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
     
     res.json({ url: authUrl });
-  });
-
-  // 1b. Manual Token Login (bypass OAuth)
-  app.post("/api/auth/facebook/token", (req, res) => {
-    const { accessToken } = req.body;
-    if (!accessToken) {
-      return res.status(400).json({ error: "Token não fornecido" });
-    }
-    res.cookie("fb_access_token", accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 60 * 24 * 60 * 60 * 1000 // 60 days
-    });
-    res.json({ success: true });
   });
 
   // 2. OAuth Callback
@@ -609,7 +563,10 @@ async function startServer() {
   // 3. Proxy API to fetch Instagram Business Account
   app.get("/api/instagram/me", async (req, res) => {
     const token = req.cookies.fb_access_token;
-    if (!token) return res.status(401).json({ error: "Not authenticated" });
+    if (!token) {
+      console.warn("[Instagram] API call /api/instagram/me failed: Missing fb_access_token cookie.");
+      return res.status(401).json({ error: "Not authenticated" });
+    }
 
     try {
       // 0. Check current token permissions

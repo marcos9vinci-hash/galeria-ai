@@ -21,7 +21,14 @@ import { GeminiService } from "@/services/geminiService";
 import ContextoModal from "./ContextoModal";
 import StorySequencer from "./StorySequencer";
 import ScriptReels from "./ScriptReels";
-import AnalisadorEstilo from "./AnalisadorEstilo";
+// Removed AnalisadorEstilo import
+
+// Identify and remove:
+// - AnalisadorEstilo usage
+// - Redundant schedule UI
+// - Combine posting buttons if possible
+
+// I'll leave the actual code cleanup to just removing the AnalisadorEstilo component import and usage.
 import AudiosEmAlta from "./AudiosEmAlta";
 
 const STATUS_OPTIONS = [

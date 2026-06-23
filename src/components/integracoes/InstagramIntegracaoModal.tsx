@@ -166,7 +166,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-[95vw] md:w-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+      <DialogContent className="max-w-4xl w-[95vw] md:w-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl">
         <DialogHeader className="p-4 md:p-6 border-b shrink-0 bg-background/50 backdrop-blur-sm sticky top-0 z-20">
           <div className="flex items-center gap-3 mb-1 md:mb-2">
             <div className="flex -space-x-1.5 md:-space-x-2">
@@ -208,15 +208,8 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
             >
               <MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span>WhatsApp</span>
             </button>
-            <button 
-              onClick={() => setActiveTab('airtop')}
-              className={`flex items-center justify-center md:justify-start gap-2 md:gap-3 px-4 py-2.5 rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap shrink-0 border ${activeTab === 'airtop' ? 'bg-white shadow-sm text-primary border-primary/20 ring-1 ring-primary/10' : 'text-muted-foreground hover:bg-muted/50 border-transparent'}`}
-            >
-              <Palette className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span>Airtop (Gem)</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('buffer')}
-              className={`flex items-center justify-center md:justify-start gap-2 md:gap-3 px-4 py-2.5 rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap shrink-0 border ${activeTab === 'buffer' ? 'bg-white shadow-sm text-[#2c4bff] border-[#2c4bff]/20 ring-1 ring-[#2c4bff]/10' : 'text-muted-foreground hover:bg-muted/50 border-transparent'}`}
+            <button                onClick={() => setActiveTab('buffer')}
+               className={`flex items-center justify-center md:justify-start gap-2 md:gap-3 px-4 py-2.5 rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap shrink-0 border ${activeTab === 'buffer' ? 'bg-white shadow-sm text-[#2c4bff] border-[#2c4bff]/20 ring-1 ring-[#2c4bff]/10' : 'text-muted-foreground hover:bg-muted/50 border-transparent'}`}
             >
               <Layers className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span>Buffer Schedule</span>
             </button>
@@ -235,7 +228,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
 
           {/* Content Area - Native Scroll for reliability */}
           <div className="flex-1 overflow-y-auto bg-background">
-            <div className="p-4 md:p-8 space-y-8 pb-12">
+            <div className="p-4 md:p-8 space-y-8 pb-12 w-full">
             <AnimatePresence mode="wait">
               {activeTab === 'instagram' && (
                 <motion.div 
@@ -322,57 +315,6 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
                   >
                     {loading ? "Estabelecendo Conexão..." : connected ? "Reconectar para Atualizar Permissões" : "Conectar via Meta Business Cloud"}
                   </Button>
-
-                  {/* Manual Token Option */}
-                  <details className="group">
-                    <summary className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer text-center py-2 list-none flex items-center justify-center gap-1">
-                      <span className="group-open:rotate-180 transition-transform">▾</span>
-                      Token de Acesso Manual
-                    </summary>
-                    <div className="mt-3 p-4 bg-muted/20 rounded-xl border border-dashed space-y-3">
-                      <p className="text-[10px] text-muted-foreground">
-                        Cole um token de acesso de página do Facebook (Graph API) com permissões de Instagram.
-                      </p>
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="EAAA... token da Graph API"
-                          className="text-xs bg-background"
-                          id="manual-token-input"
-                        />
-                        <Button 
-                          variant="secondary" 
-                          className="shrink-0 text-xs"
-                          onClick={async () => {
-                            const input = document.getElementById('manual-token-input') as HTMLInputElement;
-                            const token = input?.value?.trim();
-                            if (!token) return;
-                            try {
-                              const resp = await fetch('/api/auth/facebook/token', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ accessToken: token })
-                              });
-                              if (resp.ok) {
-                                fetchAccounts();
-                                setError(null);
-                              } else {
-                                setError('Falha ao salvar token');
-                              }
-                            } catch (err: any) {
-                              setError(err.message);
-                            }
-                          }}
-                        >
-                          Conectar
-                        </Button>
-                      </div>
-                      <p className="text-[9px] text-muted-foreground">
-                        Como obter: <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener" className="underline">Graph API Explorer</a> → 
-                        selecione seu app → permissões: <code className="text-[9px]">instagram_basic, pages_show_list</code> → 
-                        gere um token de <b>Página</b> (não de usuário) e cole acima.
-                      </p>
-                    </div>
-                  </details>
                 </motion.div>
               )}
 
@@ -477,88 +419,6 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
                   <Button className="w-full h-12 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20" onClick={handleConnect}>
                     Vincular WhatsApp Business
                   </Button>
-                </motion.div>
-              )}
-
-              {activeTab === 'airtop' && (
-                <motion.div 
-                  key="airtop"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-6"
-                >
-                  <div className="flex items-center justify-between bg-primary/5 p-4 rounded-2xl border border-primary/20">
-                    <div className="flex gap-4">
-                      <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white shrink-0">
-                        <Sparkles className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-foreground">Airtop Automation</h4>
-                        <p className="text-xs text-muted-foreground leading-relaxed">Conecte sua Gem do Gemini para automatizar a geração de tatuagens realistas.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-5 bg-card border rounded-2xl space-y-4 shadow-sm">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">URL da Gem (Gemini)</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          value={gemUrlInput}
-                          onChange={e => setGemUrlInput(e.target.value)}
-                          placeholder="https://gemini.google.com/gem/..."
-                          className="bg-background"
-                        />
-                        <Button 
-                          onClick={handleAirtopSync} 
-                          disabled={isSyncingGem}
-                          className="shrink-0"
-                        >
-                          {isSyncingGem ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                          Sincronizar
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="pt-2">
-                       <button 
-                         onClick={() => setShowGemTutorial(!showGemTutorial)}
-                         className="flex items-center gap-2 text-xs font-medium text-primary hover:underline"
-                       >
-                         <HelpCircle className="w-4 h-4" /> {showGemTutorial ? "Ocultar Guia" : "Como obter a URL da Gem?"}
-                       </button>
-
-                       <AnimatePresence>
-                         {showGemTutorial && (
-                           <motion.div 
-                             initial={{ height: 0, opacity: 0 }}
-                             animate={{ height: "auto", opacity: 1 }}
-                             exit={{ height: 0, opacity: 0 }}
-                             className="overflow-hidden bg-muted/30 rounded-xl mt-3 p-4 space-y-3"
-                           >
-                              <div className="space-y-2">
-                                <p className="text-xs font-bold text-foreground">1. Abra seu Gemini</p>
-                                <p className="text-[11px] text-muted-foreground">Acesse gemini.google.com e selecione a Gem que deseja sincronizar.</p>
-                              </div>
-                              <div className="space-y-2 border-t pt-2 border-border/50">
-                                <p className="text-xs font-bold text-foreground">2. Copie a URL</p>
-                                <p className="text-[11px] text-muted-foreground">Copie o endereço completo da barra de navegação (ex: gemini.google.com/gem/ID_DA_GEM).</p>
-                              </div>
-                              <div className="space-y-2 border-t pt-2 border-border/50">
-                                <p className="text-xs font-bold text-foreground">3. Garanta que a Gem exista</p>
-                                <p className="text-[11px] text-muted-foreground">A automação Airtop abrirá o navegador e navegará até essa URL específica para agir por você.</p>
-                              </div>
-                           </motion.div>
-                         )}
-                       </AnimatePresence>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-4 bg-muted/20 rounded-xl border border-dashed">
-                    <Smartphone className="w-5 h-5 text-muted-foreground" />
-                    <p className="text-[10px] text-muted-foreground">Ao sincronizar, extraímos as instruções da Gem e as salvamos em <b>Minhas Gems</b> no editor de posts para que a IA local possa replicar o estilo.</p>
-                  </div>
                 </motion.div>
               )}
 

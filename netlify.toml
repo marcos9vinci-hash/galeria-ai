@@ -1,8 +1,0 @@
-# ─── Redirecionamento completo pro Railway ───
-# O app roda completo no Railway (frontend + backend + APIs)
-
-[[redirects]]
-  from = "/*"
-  to = "https://galeria-ia-production.up.railway.app/:splat"
-  status = 301
-  force = true
