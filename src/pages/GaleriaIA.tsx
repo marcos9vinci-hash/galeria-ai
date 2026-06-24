@@ -73,7 +73,12 @@ export default function GaleriaIA() {
           fetch(`/api/buffer/posts/${p.id}`).then(res => res.json())
         );
         const results = await Promise.all(postsPromises);
-        const allBufferPosts = results.flatMap(r => r.data?.node?.posts?.nodes || []);
+        const allBufferPosts = results.flatMap(r => {
+          const edges = r.data?.posts?.edges;
+          if (edges) return edges.map((e: any) => e.node);
+          // fallback: old format
+          return r.data?.node?.posts?.nodes || [];
+        });
         setBufferPosts(allBufferPosts.sort((a, b) => {
           const dateA = new Date(a.scheduledAt || a.dueAt || 0).getTime();
           const dateB = new Date(b.scheduledAt || b.dueAt || 0).getTime();

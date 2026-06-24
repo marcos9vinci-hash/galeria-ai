@@ -46,8 +46,8 @@ export default function BufferScheduleManager() {
     try {
       const response = await fetch(`/api/buffer/schedule/${id}`);
       const data = await response.json();
-      if (data.data?.node?.postingSchedules) {
-        setSchedules(data.data.node.postingSchedules);
+      if (data.data?.channel?.postingSchedule) {
+        setSchedules(data.data.channel.postingSchedule);
       } else {
         setSchedules([]);
       }
@@ -120,6 +120,10 @@ export default function BufferScheduleManager() {
         })
       });
       const data = await response.json();
+      if (data.hint === 'manage_schedules_in_buffer_web') {
+        setSuccess('Horários gerenciados apenas pelo site do Buffer (buffer.com). Abra e edite lá.');
+        return;
+      }
       if (data.data?.updatePostingSchedules?.channel) {
         setSuccess('Horários de postagem atualizados!');
       } else if (data.data?.updatePostingSchedules?.message) {

@@ -315,6 +315,53 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
                   >
                     {loading ? "Estabelecendo Conexão..." : connected ? "Reconectar para Atualizar Permissões" : "Conectar via Meta Business Cloud"}
                   </Button>
+
+                  {/* Manual token input — bypass OAuth */} 
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-muted-foreground/20" />
+                    </div>
+                    <div className="relative flex justify-center text-[10px] uppercase">
+                      <span className="bg-background px-3 text-muted-foreground font-bold">Ou cole seu token manualmente</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Cole o token de acesso do Facebook aqui..."
+                      className="text-[11px]"
+                      id="manual-token-input"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="w-full h-9 text-xs font-bold"
+                      onClick={async () => {
+                        const input = document.getElementById('manual-token-input') as HTMLInputElement;
+                        const tok = input?.value?.trim();
+                        if (!tok) return;
+                        try {
+                          setLoading(true);
+                          const resp = await fetch('/api/instagram/login-manual', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ accessToken: tok })
+                          });
+                          const data = await resp.json();
+                          if (resp.ok) {
+                            fetchAccounts();
+                          } else {
+                            setError(data.error || 'Token inválido');
+                          }
+                        } catch (err: any) {
+                          setError(err.message);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      {loading ? "Validando..." : "Conectar com Token Manual"}
+                    </Button>
+                  </div>
                 </motion.div>
               )}
 
