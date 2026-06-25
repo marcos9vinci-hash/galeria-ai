@@ -592,7 +592,21 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
 
   // 3. Proxy API to fetch Instagram Business Account
   app.get("/api/instagram/me", async (req, res) => {
-    const token = req.cookies.fb_access_token;
+    let token = req.cookies.fb_access_token;
+    
+    // Fallback: if no cookie, use the long-lived token from Railway
+    if (!token && process.env.FACEBOOK_LONG_TOKEN) {
+      token = process.env.FACEBOOK_LONG_TOKEN;
+      // Auto-set cookie so subsequent requests use it
+      res.cookie("fb_access_token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 60 * 24 * 60 * 60 * 1000
+      });
+      console.log("[Instagram] Using FACEBOOK_LONG_TOKEN from env (auto-set cookie)");
+    }
+    
     if (!token) {
       console.warn("[Instagram] API call /api/instagram/me failed: Missing fb_access_token cookie.");
       return res.status(401).json({ error: "Not authenticated" });
