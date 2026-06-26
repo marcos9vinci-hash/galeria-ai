@@ -1692,21 +1692,19 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
     
     try {
       const query = `
-        query GetPostingSchedules($channelId: ID!) {
-          node(id: $channelId) {
-            ... on Channel {
-              id
-              postingSchedules {
-                days
-                times
-              }
+        query GetChannelSchedule($input: ChannelInput!) {
+          channel(input: $input) {
+            postingSchedule {
+              day
+              times
+              paused
             }
           }
         }
       `;
       const response = await axios.post("https://api.buffer.com/graphql", { 
         query,
-        variables: { channelId: profileId }
+        variables: { input: { id: profileId } }
       }, {
         headers: { 
           "Authorization": `Bearer ${token}`, 
@@ -1721,47 +1719,13 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   app.post("/api/buffer/schedule-update", async (req, res) => {
-    const { profileId, schedules } = req.body;
-    const token = getBufferToken(req);
-    
-    try {
-      const query = `
-        mutation UpdatePostingSchedules($input: UpdatePostingSchedulesInput!) {
-          updatePostingSchedules(input: $input) {
-            ... on UpdatePostingSchedulesSuccess {
-              channel {
-                id
-                postingSchedules {
-                  days
-                  times
-                }
-              }
-            }
-            ... on MutationError {
-              message
-            }
-          }
-        }
-      `;
-      const response = await axios.post("https://api.buffer.com/graphql", { 
-        query,
-        variables: { 
-          input: {
-            channelId: profileId,
-            schedules: schedules // expects array of { days: [], times: [] }
-          }
-        }
-      }, {
-        headers: { 
-          "Authorization": `Bearer ${token}`, 
-          "Content-Type": "application/json" 
-        }
-      });
-      
-      res.json(response.data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.response?.data || error.message });
-    }
+    // Mutation updatePostingSchedules was removed from the Buffer GraphQL API.
+    // Schedule management is only available through Buffer's web app.
+    // This endpoint is preserved for forward compatibility.
+    res.status(501).json({
+      error: "Schedule update is not available via API. Please manage schedules at https://buffer.com/app",
+      apiNote: "Buffer removed updatePostingSchedules mutation from their GraphQL schema"
+    });
   });
 
   // --- ESTÚDIO IA: ORQUESTRADOR DE ESTRATÉGIA ---
