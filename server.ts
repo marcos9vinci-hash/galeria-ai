@@ -540,7 +540,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   const getFacebookToken = (req: any): string | undefined => {
-    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN;
+    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN || process.env.FACEBOOK_LONG_TOKEN;
   };
 
   const getBufferToken = (req: any): string => {
