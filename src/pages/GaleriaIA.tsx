@@ -15,6 +15,9 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
+import { db, auth } from "@/lib/firebase";
+import { collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, doc, setDoc } from "firebase/firestore";
+import { signInAnonymously } from "firebase/auth";
 
 // Auxiliary Components
 import CalendarioAgendamentos from "@/components/galeria/CalendarioAgendamentos";
@@ -73,12 +76,7 @@ export default function GaleriaIA() {
           fetch(`/api/buffer/posts/${p.id}`).then(res => res.json())
         );
         const results = await Promise.all(postsPromises);
-        const allBufferPosts = results.flatMap(r => {
-          const edges = r.data?.posts?.edges;
-          if (edges) return edges.map((e: any) => e.node);
-          // fallback: old format
-          return r.data?.node?.posts?.nodes || [];
-        });
+        const allBufferPosts = results.flatMap(r => r.data?.node?.posts?.nodes || []);
         setBufferPosts(allBufferPosts.sort((a, b) => {
           const dateA = new Date(a.scheduledAt || a.dueAt || 0).getTime();
           const dateB = new Date(b.scheduledAt || b.dueAt || 0).getTime();
@@ -176,24 +174,69 @@ export default function GaleriaIA() {
 
   // Load posts
   useEffect(() => {
-    let loadedPosts: any[] = [];
-    try {
-      const saved = localStorage.getItem('galeria_posts_v3');
-      if (saved) {
-        loadedPosts = JSON.parse(saved).map((p: any) => ({
-          ...p,
-          date: new Date(p.date),
-          status: p.status || 'rascunho',
-        }));
-        setPosts(loadedPosts);
+    const loadPosts = async () => {
+        if (!auth.currentUser) return;
+        try {
+            const q = query(collection(db, "posts"), where("userId", "==", auth.currentUser.uid));
+            const querySnapshot = await getDocs(q);
+            let loadedPosts = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                date: new Date(doc.data().date as string)
+            }));
+
+            // If Firestore is empty, try loading from localStorage to restore any unsaved work!
+            if (loadedPosts.length === 0) {
+              const saved = localStorage.getItem('galeria_posts_v3');
+              if (saved) {
+                const localPosts = JSON.parse(saved).map((p: any) => ({
+                  ...p,
+                  date: new Date(p.date),
+                  status: p.status || 'rascunho',
+                }));
+                if (localPosts.length > 0) {
+                  loadedPosts = localPosts;
+                  // Save them to Firestore immediately
+                  await savePosts(localPosts);
+                }
+              }
+            }
+
+            setPosts(loadedPosts);
+            if (loadedPosts.length > 0) {
+              syncWithServerScheduler(loadedPosts);
+            }
+        } catch (e) {
+            console.error("Error loading posts from Firestore:", e);
+            // Fallback to localStorage on error
+            try {
+              const saved = localStorage.getItem('galeria_posts_v3');
+              if (saved) {
+                const localPosts = JSON.parse(saved).map((p: any) => ({
+                  ...p,
+                  date: new Date(p.date),
+                  status: p.status || 'rascunho',
+                }));
+                setPosts(localPosts);
+              }
+            } catch {}
+        }
+    };
+    
+    // Auth might take a moment to initialize
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadPosts();
+      } else {
+        // Automatically sign in anonymously to protect user data from vanishing
+        signInAnonymously(auth).catch(err => {
+          console.error("Anonymous authentication failed:", err);
+        });
       }
-    } catch {
-      setPosts([]);
-    }
+    });
+    
     fetchBufferQueue();
-    if (loadedPosts.length > 0) {
-      syncWithServerScheduler(loadedPosts);
-    }
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -202,19 +245,51 @@ export default function GaleriaIA() {
     }
   }, [activeTab]);
 
-  const savePosts = (newPosts: any[]) => {
+  const savePosts = async (newPosts: any[]) => {
     setPosts(newPosts);
-    // Deep clone to avoid image data URL bloating if needed, but for preview we want images
-    const postsToSave = newPosts.map(p => ({
-      ...p,
-      date: p.date instanceof Date ? p.date.toISOString() : p.date
-    }));
+    
+    // Always backup in localStorage as local redundancy
     try {
+      const postsToSave = newPosts.map(p => ({
+        ...p,
+        date: p.date instanceof Date ? p.date.toISOString() : p.date
+      }));
       localStorage.setItem('galeria_posts_v3', JSON.stringify(postsToSave));
       setQuotaWarning(false);
     } catch (e) {
-      console.warn("Storage quota full, might not persist everything.");
+      console.warn("Storage quota full, might not persist in localStorage.");
       setQuotaWarning(true);
+    }
+
+    if (!auth.currentUser) return;
+
+    for (const p of newPosts) {
+      try {
+        const postData = {
+          userId: auth.currentUser.uid,
+          image: p.image,
+          caption: p.caption || '',
+          date: p.date instanceof Date ? p.date.toISOString() : p.date,
+          type: p.type || 'feed',
+          status: p.status || 'rascunho'
+        };
+        
+        if (p.id && typeof p.id === 'string' && !p.id.startsWith('temp_') && !String(p.id).includes('.')) {
+          await updateDoc(doc(db, "posts", p.id), postData);
+        } else {
+          // New post or local temporary id
+          const docRef = await addDoc(collection(db, "posts"), postData);
+          // Update id in local state
+          setPosts(prev => prev.map(post => {
+            if (post.image === p.image && (post.id === p.id || !post.id || String(post.id).includes('.'))) {
+              return { ...post, id: docRef.id };
+            }
+            return post;
+          }));
+        }
+      } catch (e) {
+        console.error("Error saving post to Firestore:", e);
+      }
     }
   };
 
@@ -524,7 +599,7 @@ export default function GaleriaIA() {
           </TabsList>
 
           <TabsContent value="calendario" className="mt-0">
-            <div className="grid gap-6 md:grid-cols-[1fr,300px]">
+            <div className="grid gap-6 md:grid-cols-[1fr,minmax(300px,400px)]">
               <Card className="border-none shadow-none bg-transparent">
                 <CardContent className="p-0 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-card/30 p-2 rounded-2xl border border-border/40">
@@ -542,13 +617,6 @@ export default function GaleriaIA() {
                          onClick={handleClearGallery}
                        >
                          <Trash2 className="w-3.5 h-3.5" /> LIMPAR GALERIA
-                       </Button>
-                       <Button 
-                         size="sm" 
-                         className="h-8 text-[10px] font-bold bg-primary text-white gap-1.5 shadow-md shadow-primary/20"
-                         onClick={() => setShowEstudioIA(true)}
-                       >
-                         <Sparkles className="w-3.5 h-3.5" /> ESTÚDIO IA
                        </Button>
                     </div>
                   </div>
@@ -625,6 +693,31 @@ export default function GaleriaIA() {
 
               {/* Sidebar Helpers */}
               <div className="space-y-6">
+                <motion.div
+                  whileHover={{ scale: 1.01 }}
+                  className="p-4 bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent rounded-2xl border border-primary/20 shadow-md relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -z-10" />
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-primary/20 rounded-lg text-primary mt-0.5">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xs font-bold text-primary">Estúdio de Campanhas (Agente IA)</h4>
+                      <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                        Defina um tema (ex: "Promoção de Outubro" ou "Significados Botânicos") e anexe fotos de tatuagens. O Agente de IA criará e agendará uma campanha inteira em massa para você de forma coesa e sequencial!
+                      </p>
+                      <Button 
+                        size="sm" 
+                        className="w-full h-8 mt-3 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shadow-sm"
+                        onClick={() => setShowEstudioIA(true)}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" /> Iniciar Co-Criação IA
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -735,15 +828,8 @@ export default function GaleriaIA() {
           existingPosts={posts}
           onPostCreated={async (newPost) => {
             const scheduledPost = await schedulePostIntegrations(newPost);
-            setPosts(prev => {
-              const updated = [...prev, scheduledPost];
-              const postsToSave = updated.map(p => ({
-                ...p,
-                date: p.date instanceof Date ? p.date.toISOString() : p.date
-              }));
-              localStorage.setItem('galeria_posts_v3', JSON.stringify(postsToSave));
-              return updated;
-            });
+            const updated = [...posts, scheduledPost];
+            await savePosts(updated);
             fetchBufferQueue();
           }}
         />

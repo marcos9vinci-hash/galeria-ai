@@ -9,6 +9,12 @@ service cloud.firestore {
           && data.scheduledAt is string
           && data.published is bool;
     }
+    function isValidUserPost(data) {
+      return data.userId is string && data.userId.size() <= 128
+          && data.image is string
+          && data.date is string
+          && data.status is string;
+    }
 
     match /scheduledPosts/{postId} {
       allow read: if isSignedIn();
@@ -17,6 +23,13 @@ service cloud.firestore {
         && request.resource.data.published == resource.data.published // prevent status change
         && request.resource.data.igId == resource.data.igId; // immutable fields
       allow delete: if isSignedIn();
+    }
+
+    match /posts/{postId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidUserPost(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && isValidUserPost(request.resource.data) && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }

@@ -24,6 +24,35 @@ export default function BufferScheduleManager() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [manualBufferToken, setManualBufferToken] = useState('');
+  const [savingManualBuffer, setSavingManualBuffer] = useState(false);
+  const [manualBufferSuccess, setManualBufferSuccess] = useState<string | null>(null);
+
+  const handleSaveManualBufferToken = async () => {
+    if (!manualBufferToken) return;
+    setSavingManualBuffer(true);
+    setManualBufferSuccess(null);
+    try {
+      const response = await fetch('/api/auth/buffer/manual-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: manualBufferToken })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setManualBufferSuccess('Token do Buffer atualizado com sucesso!');
+        setManualBufferToken('');
+        setError(null);
+        fetchProfiles(); // reload profiles
+      } else {
+        setError(data.error || 'Erro ao salvar token');
+      }
+    } catch (err: any) {
+      setError('Erro ao salvar token: ' + err.message);
+    } finally {
+      setSavingManualBuffer(false);
+    }
+  };
 
   const fetchProfiles = async () => {
     try {
@@ -46,8 +75,8 @@ export default function BufferScheduleManager() {
     try {
       const response = await fetch(`/api/buffer/schedule/${id}`);
       const data = await response.json();
-      if (data.data?.channel?.postingSchedule) {
-        setSchedules(data.data.channel.postingSchedule);
+      if (data.data?.node?.postingSchedules) {
+        setSchedules(data.data.node.postingSchedules);
       } else {
         setSchedules([]);
       }
@@ -120,10 +149,6 @@ export default function BufferScheduleManager() {
         })
       });
       const data = await response.json();
-      if (data.hint === 'manage_schedules_in_buffer_web') {
-        setSuccess('Horários gerenciados apenas pelo site do Buffer (buffer.com). Abra e edite lá.');
-        return;
-      }
       if (data.data?.updatePostingSchedules?.channel) {
         setSuccess('Horários de postagem atualizados!');
       } else if (data.data?.updatePostingSchedules?.message) {
@@ -168,6 +193,36 @@ export default function BufferScheduleManager() {
         </div>
       </CardHeader>
       <CardContent className="p-6">
+        {/* Manual Buffer Token Insertion Section */}
+        <div className="mb-6 p-4 bg-muted/20 border border-dashed border-border rounded-xl space-y-2">
+          <div className="flex justify-between items-center">
+            <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Substituir/Bypass Token do Buffer</h4>
+            <span className="text-[9px] font-mono text-muted-foreground">Status: Conectado</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Se os perfis não carregarem ou se o token atual do Buffer estiver expirado, cole seu novo token de acesso aqui.</p>
+          <div className="flex gap-2">
+            <Input
+              type="password"
+              placeholder="Insira o Access Token do Buffer..."
+              value={manualBufferToken}
+              onChange={(e) => setManualBufferToken(e.target.value)}
+              className="bg-background text-xs"
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleSaveManualBufferToken}
+              disabled={savingManualBuffer}
+              className="shrink-0 h-9"
+            >
+              {savingManualBuffer ? <Loader2 className="w-4 h-4 animate-spin" /> : "Atualizar"}
+            </Button>
+          </div>
+          {manualBufferSuccess && (
+            <p className="text-[10px] font-bold text-green-600 mt-1">{manualBufferSuccess}</p>
+          )}
+        </div>
+
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />

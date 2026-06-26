@@ -1,7 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
-
 // Bridge component to simulate the base44 SDK used in the original snippets
-// but actually uses the Gemini SDK available in this environment.
+// but proxies call to the backend to protect GEMINI_API_KEY.
 export const base44 = {
   integrations: {
     Core: {
@@ -17,47 +15,30 @@ export const base44 = {
         });
       },
       InvokeLLM: async ({ prompt, file_urls, response_json_schema }: any) => {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        
-        const contents: any[] = [{ text: prompt }];
-
-        if (file_urls && file_urls.length > 0) {
-          for (const url of file_urls) {
-            if (url.startsWith("data:")) {
-              const [header, data] = url.split(",");
-              const mimeType = header.split(":")[1].split(";")[0];
-              contents.push({
-                inlineData: {
-                  data,
-                  mimeType,
-                },
-              });
-            }
+        try {
+          const res = await fetch("/api/llm/invoke", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ prompt, file_urls, response_json_schema }),
+          });
+          
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(errBody.error || `HTTP error ${res.status}`);
           }
-        }
-
-        const result = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: { parts: contents },
-          config: response_json_schema ? {
-            responseMimeType: "application/json"
-          } : undefined
-        });
-
-        const text = result.text || "";
-
-        if (response_json_schema) {
-          try {
-            // Attempt to extract JSON from markdown if present or if the model returned raw JSON
-            const jsonMatch = text.match(/\{[\s\S]*\}/);
-            return JSON.parse(jsonMatch ? jsonMatch[0] : text);
-          } catch (e) {
-            console.error("Failed to parse AI response as JSON", text);
-            return { error: "Parse Error", raw: text };
+          
+          const result = await res.json();
+          // If response_json_schema was requested, return the parsed JSON directly.
+          if (response_json_schema) {
+            return result;
           }
+          return typeof result.text !== "undefined" ? result.text : result;
+        } catch (error: any) {
+          console.error("[InvokeLLM Client Error]", error);
+          throw error;
         }
-
-        return text;
       },
     },
   },

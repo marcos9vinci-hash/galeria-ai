@@ -155,7 +155,7 @@ export default function EstudioIAWorkflow({ open, onClose, igId, profileInfo, on
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-background">
+      <DialogContent className="max-w-none w-[95vw] md:w-[90vw] lg:w-[80vw] max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background">
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Input & Strategy */}
           <div className="w-full md:w-2/5 p-6 flex flex-col gap-6 border-r overflow-y-auto bg-muted/5">

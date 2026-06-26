@@ -14,12 +14,30 @@
         "error": { "type": "string" }
       },
       "required": ["igId", "imageUrl", "scheduledAt", "published"]
+    },
+    "UserPost": {
+      "title": "User Post",
+      "description": "A post stored by the user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "image": { "type": "string" },
+        "caption": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "type": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["userId", "image", "date", "status"]
     }
   },
   "firestore": {
     "/scheduledPosts/{postId}": {
       "schema": { "$ref": "ScheduledPost" },
       "description": "Collection of scheduled Instagram posts"
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "UserPost" },
+      "description": "Collection of user posts"
     }
   }
 }

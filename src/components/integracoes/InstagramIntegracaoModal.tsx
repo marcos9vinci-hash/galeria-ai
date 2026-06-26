@@ -51,6 +51,35 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
   const [accounts, setAccounts] = React.useState<any[]>([]);
   const [hasPublishPerm, setHasPublishPerm] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [manualIgToken, setManualIgToken] = React.useState("");
+  const [savingManualIg, setSavingManualIg] = React.useState(false);
+  const [manualIgSuccess, setManualIgSuccess] = React.useState<string | null>(null);
+
+  const handleSaveManualInstagramToken = async () => {
+    if (!manualIgToken) return;
+    setSavingManualIg(true);
+    setManualIgSuccess(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/auth/facebook/manual-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: manualIgToken })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setManualIgSuccess("Token do Instagram atualizado com sucesso!");
+        setManualIgToken("");
+        fetchAccounts(); // reload accounts
+      } else {
+        setError(data.error || "Erro ao salvar token");
+      }
+    } catch (err: any) {
+      setError("Erro ao salvar token: " + err.message);
+    } finally {
+      setSavingManualIg(false);
+    }
+  };
 
   const fetchAccounts = async () => {
     try {
@@ -166,7 +195,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[95vw] md:w-full max-h-[90vh] md:max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+      <DialogContent className="max-w-none w-[95vw] md:w-[90vw] lg:w-[80vw] max-h-[90vh] md:max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl">
         <DialogHeader className="p-4 md:p-6 border-b shrink-0 bg-background/50 backdrop-blur-sm sticky top-0 z-20">
           <div className="flex items-center gap-3 mb-1 md:mb-2">
             <div className="flex -space-x-1.5 md:-space-x-2">
@@ -302,6 +331,37 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
                     </div>
                   </div>
 
+                  {/* Manual Token Bypass Form */}
+                  <div className="p-4 bg-muted/20 border border-dashed border-border rounded-2xl space-y-3">
+                    <div className="flex flex-col gap-1">
+                      <h6 className="text-xs font-bold text-foreground">Bypass OAuth / Input de Token Manual</h6>
+                      <p className="text-[10px] text-muted-foreground leading-snug">
+                        Se o fluxo automático do pop-up falhar ou se você já possui um Token de Longa Duração válido da Meta, cole-o aqui.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        placeholder="Insira seu Access Token da Meta..."
+                        value={manualIgToken}
+                        onChange={(e) => setManualIgToken(e.target.value)}
+                        className="bg-background text-xs h-9"
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        onClick={handleSaveManualInstagramToken}
+                        disabled={savingManualIg}
+                        className="h-9 shrink-0"
+                      >
+                        {savingManualIg ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+                      </Button>
+                    </div>
+                    {manualIgSuccess && (
+                      <p className="text-[10px] text-green-600 font-bold">{manualIgSuccess}</p>
+                    )}
+                  </div>
+
                   {error && (
                     <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-[10px] text-destructive font-medium">
                       {error}
@@ -315,53 +375,6 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
                   >
                     {loading ? "Estabelecendo Conexão..." : connected ? "Reconectar para Atualizar Permissões" : "Conectar via Meta Business Cloud"}
                   </Button>
-
-                  {/* Manual token input — bypass OAuth */} 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-muted-foreground/20" />
-                    </div>
-                    <div className="relative flex justify-center text-[10px] uppercase">
-                      <span className="bg-background px-3 text-muted-foreground font-bold">Ou cole seu token manualmente</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="Cole o token de acesso do Facebook aqui..."
-                      className="text-[11px]"
-                      id="manual-token-input"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full h-9 text-xs font-bold"
-                      onClick={async () => {
-                        const input = document.getElementById('manual-token-input') as HTMLInputElement;
-                        const tok = input?.value?.trim();
-                        if (!tok) return;
-                        try {
-                          setLoading(true);
-                          const resp = await fetch('/api/instagram/login-manual', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ accessToken: tok })
-                          });
-                          const data = await resp.json();
-                          if (resp.ok) {
-                            fetchAccounts();
-                          } else {
-                            setError(data.error || 'Token inválido');
-                          }
-                        } catch (err: any) {
-                          setError(err.message);
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                    >
-                      {loading ? "Validando..." : "Conectar com Token Manual"}
-                    </Button>
-                  </div>
                 </motion.div>
               )}
 

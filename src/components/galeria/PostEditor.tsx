@@ -21,7 +21,7 @@ import { GeminiService } from "@/services/geminiService";
 import ContextoModal from "./ContextoModal";
 import StorySequencer from "./StorySequencer";
 import ScriptReels from "./ScriptReels";
-// Removed AnalisadorEstilo import
+import AnalisadorEstilo from "./AnalisadorEstilo";
 
 // Identify and remove:
 // - AnalisadorEstilo usage
@@ -1021,7 +1021,7 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
                             </motion.div>
                          )}
 
-                         {bufferProfiles.length > 0 && (
+                         {true && (
                             <div className="flex flex-col gap-3 mb-6 bg-muted/20 p-4 rounded-xl border border-border">
                                <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
                                   <Layers className="w-3 h-3" />
