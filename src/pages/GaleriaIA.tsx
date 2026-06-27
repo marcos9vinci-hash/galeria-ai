@@ -472,10 +472,9 @@ export default function GaleriaIA() {
         };
       });
 
-      // Auto-schedule each post based on active integration channels
-      const scheduledItems = await Promise.all(newItems.map(item => schedulePostIntegrations(item)));
-
-      savePosts([...currentPosts, ...scheduledItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      // Não agenda automaticamente! Posts aparecem como rascunho na galeria
+      // para o usuário revisar e agendar manualmente depois
+      savePosts([...currentPosts, ...newItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     } catch (error: any) {
       console.error("Critical error in AI planning:", error);
       alert(error?.message || "Ocorreu um erro ao planejar sua estratégia. Verifique sua conexão.");
