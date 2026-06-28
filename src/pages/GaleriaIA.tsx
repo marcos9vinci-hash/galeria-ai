@@ -285,7 +285,12 @@ export default function GaleriaIA() {
           caption: p.caption || '',
           date: p.date instanceof Date ? p.date.toISOString() : p.date,
           type: p.type || 'feed',
-          status: p.status || 'rascunho'
+          status: p.status || 'rascunho',
+          scheduledTime: p.scheduledTime || null,
+          scheduledAt: p.scheduledAt || null,
+          hashtags: p.hashtags || [],
+          cta: p.cta || null,
+          scheduledDate: p.scheduledDate || null
         };
         
         if (p.id && typeof p.id === 'string' && !p.id.startsWith('temp_') && !String(p.id).includes('.')) {
@@ -326,7 +331,18 @@ export default function GaleriaIA() {
           const selectedProfile = profiles[0]; // Usa o primeiro canal configurado por padrão
           
           const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
-          const scheduledIso = post.scheduledTime || post.date;
+          // Usa a data corrente do post (arrastada no calendário) como base
+          // e preserva o horário manual se existir
+          let scheduledIso: string;
+          const postDate = typeof post.date === 'string' ? post.date : post.date?.toISOString?.() || post.date;
+          if (post.scheduledTime && post.scheduledTime.includes('T')) {
+            // scheduledTime é ISO completo: substitui só a parte da data
+            const baseDate = postDate?.substring(0, 10) || new Date().toISOString().substring(0, 10);
+            const timePart = post.scheduledTime.includes('T') ? post.scheduledTime.substring(11, 16) : '12:00';
+            scheduledIso = `${baseDate}T${timePart}:00.000Z`;
+          } else {
+            scheduledIso = postDate || new Date().toISOString();
+          }
           
           const response = await fetch("/api/buffer/create-update", {
             method: "POST",
@@ -356,7 +372,16 @@ export default function GaleriaIA() {
       // 2. Senão, se o Instagram direto estiver conectado, agenda na fila direta do servidor
       if (igConnected && profileInfo?.igId) {
         const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
-        const scheduledIso = post.scheduledTime || post.date;
+        // Usa a data corrente do post (arrastada no calendário) como base
+        const postDate2 = typeof post.date === 'string' ? post.date : post.date?.toISOString?.() || post.date;
+        let scheduledIso: string;
+        if (post.scheduledTime && post.scheduledTime.includes('T')) {
+          const baseDate = postDate2?.substring(0, 10) || new Date().toISOString().substring(0, 10);
+          const timePart = post.scheduledTime.includes('T') ? post.scheduledTime.substring(11, 16) : '12:00';
+          scheduledIso = `${baseDate}T${timePart}:00.000Z`;
+        } else {
+          scheduledIso = postDate2 || new Date().toISOString();
+        }
         
         const response = await fetch("/api/instagram/publish", {
           method: "POST",
@@ -466,10 +491,9 @@ export default function GaleriaIA() {
         };
       });
 
-      // Auto-schedule each post based on active integration channels
-      const scheduledItems = await Promise.all(newItems.map(item => schedulePostIntegrations(item)));
-
-      savePosts([...currentPosts, ...scheduledItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      // Não agenda automaticamente! Posts aparecem como rascunho na galeria
+      // para o usuário revisar e agendar manualmente depois
+      savePosts([...currentPosts, ...newItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     } catch (error: any) {
       console.error("Critical error in AI planning:", error);
       alert(error?.message || "Ocorreu um erro ao planejar sua estratégia. Verifique sua conexão.");
@@ -495,7 +519,14 @@ export default function GaleriaIA() {
   const handleDrop = (e: React.DragEvent, targetDay: Date) => {
     e.preventDefault();
     if (draggedPostId === null) return;
-    savePosts(posts.map(p => p.id === draggedPostId ? { ...p, date: targetDay, scheduledDate: format(targetDay, 'yyyy-MM-dd') } : p));
+    savePosts(posts.map(p => p.id === draggedPostId ? { 
+      ...p, 
+      date: targetDay, 
+      scheduledDate: format(targetDay, 'yyyy-MM-dd'),
+      scheduledTime: p.scheduledTime?.includes?.('T') 
+        ? `${format(targetDay, 'yyyy-MM-dd')}T${p.scheduledTime.split('T')[1]}`
+        : p.scheduledTime
+    } : p));
     setDraggedPostId(null);
   };
 
