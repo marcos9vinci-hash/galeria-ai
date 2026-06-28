@@ -191,7 +191,7 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(cookieParser());
   app.use(express.json({ limit: "50mb" }));
@@ -540,7 +540,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   const getFacebookToken = (req: any): string | undefined => {
-    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN;
+    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN || process.env.FACEBOOK_LONG_TOKEN;
   };
 
   const getBufferToken = (req: any): string => {
@@ -601,7 +601,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
       "public_profile"
     ].join(",");
 
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
+    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&display=popup`;
     
     res.json({ url: authUrl });
   });
