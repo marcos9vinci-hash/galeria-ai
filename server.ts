@@ -2150,7 +2150,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV === "development") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

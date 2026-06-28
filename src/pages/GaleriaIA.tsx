@@ -244,7 +244,7 @@ export default function GaleriaIA() {
       if (user) {
         loadPosts();
       } else {
-        // Automatically sign in anonymously
+        // Anonymous auth not available — localStorage already loaded above
         console.warn("User not authenticated. Anonymous sign-in is not enabled.");
       }
     });
