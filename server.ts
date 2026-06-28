@@ -191,7 +191,7 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = 3000;
 
   app.use(cookieParser());
   app.use(express.json({ limit: "50mb" }));
@@ -540,7 +540,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   const getFacebookToken = (req: any): string | undefined => {
-    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN || process.env.FACEBOOK_LONG_TOKEN;
+    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN;
   };
 
   const getBufferToken = (req: any): string => {
@@ -601,7 +601,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
       "public_profile"
     ].join(",");
 
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&display=popup`;
+    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
     
     res.json({ url: authUrl });
   });
@@ -1382,7 +1382,11 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
       if (response_json_schema) {
         try {
           const jsonMatch = text.match(/\{[\s\S]*\}/);
-          const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+          const textToParse = jsonMatch ? jsonMatch[0] : text;
+          if (!textToParse || textToParse === "undefined") {
+            throw new Error("Invalid response format");
+          }
+          const parsed = JSON.parse(textToParse);
           return res.json(parsed);
         } catch (e: any) {
           console.error("Failed to parse AI response as JSON on backend:", text, e.message);
@@ -1692,19 +1696,21 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
     
     try {
       const query = `
-        query GetChannelSchedule($input: ChannelInput!) {
-          channel(input: $input) {
-            postingSchedule {
-              day
-              times
-              paused
+        query GetPostingSchedules($channelId: ID!) {
+          node(id: $channelId) {
+            ... on Channel {
+              id
+              postingSchedules {
+                days
+                times
+              }
             }
           }
         }
       `;
       const response = await axios.post("https://api.buffer.com/graphql", { 
         query,
-        variables: { input: { id: profileId } }
+        variables: { channelId: profileId }
       }, {
         headers: { 
           "Authorization": `Bearer ${token}`, 
@@ -1719,13 +1725,47 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   app.post("/api/buffer/schedule-update", async (req, res) => {
-    // Mutation updatePostingSchedules was removed from the Buffer GraphQL API.
-    // Schedule management is only available through Buffer's web app.
-    // This endpoint is preserved for forward compatibility.
-    res.status(501).json({
-      error: "Schedule update is not available via API. Please manage schedules at https://buffer.com/app",
-      apiNote: "Buffer removed updatePostingSchedules mutation from their GraphQL schema"
-    });
+    const { profileId, schedules } = req.body;
+    const token = getBufferToken(req);
+    
+    try {
+      const query = `
+        mutation UpdatePostingSchedules($input: UpdatePostingSchedulesInput!) {
+          updatePostingSchedules(input: $input) {
+            ... on UpdatePostingSchedulesSuccess {
+              channel {
+                id
+                postingSchedules {
+                  days
+                  times
+                }
+              }
+            }
+            ... on MutationError {
+              message
+            }
+          }
+        }
+      `;
+      const response = await axios.post("https://api.buffer.com/graphql", { 
+        query,
+        variables: { 
+          input: {
+            channelId: profileId,
+            schedules: schedules // expects array of { days: [], times: [] }
+          }
+        }
+      }, {
+        headers: { 
+          "Authorization": `Bearer ${token}`, 
+          "Content-Type": "application/json" 
+        }
+      });
+      
+      res.json(response.data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.response?.data || error.message });
+    }
   });
 
   // --- ESTÚDIO IA: ORQUESTRADOR DE ESTRATÉGIA ---

@@ -153,12 +153,10 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
     try {
       const response = await fetch(`/api/buffer/schedule/${profileId}`);
       const data = await response.json();
-      if (data.data?.channel?.postingSchedule) {
-        // Flatten all times from schedule
-        const schedule = data.data.channel.postingSchedule;
-        const times = Array.isArray(schedule) 
-          ? schedule.flatMap((s: any) => s.times || []) 
-          : (schedule.times || []);
+      if (data.data?.node?.postingSchedules) {
+        // Flatten all times from all schedule groups
+        const times = data.data.node.postingSchedules.flatMap((s: any) => s.times);
+        // Get unique times and sort them
         const uniqueTimes = Array.from(new Set(times)).sort() as string[];
         if (uniqueTimes.length > 0) {
           setRecommendedTimes(uniqueTimes);

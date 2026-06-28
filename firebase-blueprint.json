@@ -1,43 +1,22 @@
 {
   "entities": {
-    "ScheduledPost": {
-      "title": "Scheduled Post",
-      "description": "A scheduled post for Instagram",
-      "type": "object",
-      "properties": {
-        "igId": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "caption": { "type": "string" },
-        "token": { "type": "string" },
-        "scheduledAt": { "type": "string", "format": "date-time" },
-        "published": { "type": "boolean" },
-        "error": { "type": "string" }
-      },
-      "required": ["igId", "imageUrl", "scheduledAt", "published"]
-    },
-    "UserPost": {
-      "title": "User Post",
-      "description": "A post stored by the user",
+    "ScheduleSlot": {
+      "title": "Schedule Slot",
+      "description": "A pre-defined slot for a social media post.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
-        "image": { "type": "string" },
-        "caption": { "type": "string" },
-        "date": { "type": "string", "format": "date-time" },
-        "type": { "type": "string" },
-        "status": { "type": "string" }
+        "scheduledAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["empty", "filled", "posted"] },
+        "postId": { "type": "string" }
       },
-      "required": ["userId", "image", "date", "status"]
+      "required": ["userId", "scheduledAt", "status"]
     }
   },
   "firestore": {
-    "/scheduledPosts/{postId}": {
-      "schema": { "$ref": "ScheduledPost" },
-      "description": "Collection of scheduled Instagram posts"
-    },
-    "/posts/{postId}": {
-      "schema": { "$ref": "UserPost" },
-      "description": "Collection of user posts"
+    "/scheduleSlots/{slotId}": {
+      "schema": { "$ref": "ScheduleSlot" },
+      "description": "Pre-defined scheduling slots for content."
     }
   }
 }

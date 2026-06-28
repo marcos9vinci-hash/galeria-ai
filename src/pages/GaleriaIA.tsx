@@ -15,9 +15,9 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
+import { postService } from "@/services/postService";
 import { db, auth } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, doc, setDoc } from "firebase/firestore";
-import { signInAnonymously } from "firebase/auth";
 
 // Auxiliary Components
 import CalendarioAgendamentos from "@/components/galeria/CalendarioAgendamentos";
@@ -39,6 +39,7 @@ const STATUS_OPTIONS_LOCAL = [
 ];
 
 export default function GaleriaIA() {
+  console.log("GaleriaIA component is being initialized");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [posts, setPosts] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,21 +224,34 @@ export default function GaleriaIA() {
         }
     };
     
+    // Always load from local storage initially
+    try {
+      const saved = localStorage.getItem('galeria_posts_v3');
+      if (saved) {
+        const localPosts = JSON.parse(saved).map((p: any) => ({
+          ...p,
+          date: new Date(p.date),
+          status: p.status || 'rascunho',
+        }));
+        setPosts(localPosts);
+      }
+    } catch (e) {
+      console.error("Error loading from localStorage", e);
+    }
+    
     // Auth might take a moment to initialize
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         loadPosts();
       } else {
-        // Automatically sign in anonymously to protect user data from vanishing
-        signInAnonymously(auth).catch(err => {
-          console.error("Anonymous authentication failed:", err);
-        });
+        // Automatically sign in anonymously
+        console.warn("User not authenticated. Anonymous sign-in is not enabled.");
       }
     });
     
     fetchBufferQueue();
     return () => unsubscribe();
-  }, []);
+  }, []); // Remove dependency on anything that causes re-runs if not needed
 
   useEffect(() => {
     if (activeTab === 'agendamentos') {
@@ -265,18 +279,13 @@ export default function GaleriaIA() {
 
     for (const p of newPosts) {
       try {
-        const postData: Record<string, any> = {
+        const postData = {
           userId: auth.currentUser.uid,
           image: p.image,
           caption: p.caption || '',
           date: p.date instanceof Date ? p.date.toISOString() : p.date,
           type: p.type || 'feed',
-          status: p.status || 'rascunho',
-          scheduledTime: p.scheduledTime || null,
-          scheduledAt: p.scheduledAt || null,
-          hashtags: p.hashtags || [],
-          cta: p.cta || null,
-          scheduledDate: p.scheduledDate || null
+          status: p.status || 'rascunho'
         };
         
         if (p.id && typeof p.id === 'string' && !p.id.startsWith('temp_') && !String(p.id).includes('.')) {
@@ -317,18 +326,7 @@ export default function GaleriaIA() {
           const selectedProfile = profiles[0]; // Usa o primeiro canal configurado por padrão
           
           const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
-          // Usa a data corrente do post (arrastada no calendário) como base
-          // e preserva o horário manual se existir
-          let scheduledIso: string;
-          const postDate = typeof post.date === 'string' ? post.date : post.date?.toISOString?.() || post.date;
-          if (post.scheduledTime && post.scheduledTime.includes('T')) {
-            // scheduledTime é ISO completo: substitui só a parte da data
-            const baseDate = postDate?.substring(0, 10) || new Date().toISOString().substring(0, 10);
-            const timePart = post.scheduledTime.includes('T') ? post.scheduledTime.substring(11, 16) : '12:00';
-            scheduledIso = `${baseDate}T${timePart}:00.000Z`;
-          } else {
-            scheduledIso = postDate || new Date().toISOString();
-          }
+          const scheduledIso = post.scheduledTime || post.date;
           
           const response = await fetch("/api/buffer/create-update", {
             method: "POST",
@@ -358,16 +356,7 @@ export default function GaleriaIA() {
       // 2. Senão, se o Instagram direto estiver conectado, agenda na fila direta do servidor
       if (igConnected && profileInfo?.igId) {
         const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
-        // Usa a data corrente do post (arrastada no calendário) como base
-        const postDate2 = typeof post.date === 'string' ? post.date : post.date?.toISOString?.() || post.date;
-        let scheduledIso: string;
-        if (post.scheduledTime && post.scheduledTime.includes('T')) {
-          const baseDate = postDate2?.substring(0, 10) || new Date().toISOString().substring(0, 10);
-          const timePart = post.scheduledTime.includes('T') ? post.scheduledTime.substring(11, 16) : '12:00';
-          scheduledIso = `${baseDate}T${timePart}:00.000Z`;
-        } else {
-          scheduledIso = postDate2 || new Date().toISOString();
-        }
+        const scheduledIso = post.scheduledTime || post.date;
         
         const response = await fetch("/api/instagram/publish", {
           method: "POST",
@@ -419,6 +408,10 @@ export default function GaleriaIA() {
         console.warn("Could not fetch insights for strategy, using defaults.");
       }
 
+      // Fetch Available Slots
+      if (!auth.currentUser) throw new Error("Usuário não autenticado.");
+      const availableSlots = await postService.getAvailableSlots(auth.currentUser.uid);
+
       // 3. Call AI Strategy Orchestrator
       const strategyResp = await fetch("/api/studio/plan-strategy", {
         method: "POST",
@@ -450,16 +443,17 @@ export default function GaleriaIA() {
       
       // 4. Map AI results to Post structures
       const newItems = uploadedImages.map((url, i) => {
+        const slot = availableSlots[i];
         const plan = aiStrategy[i] || { 
           type: 'feed', 
-          date: addDays(new Date(), i + 1).toISOString(),
+          date: addDays(new Date(), i).toISOString(),
           caption: "✨ Trabalho finalizado no estúdio @aflor da pele!\n\n#tattoo #tatuagem #ink",
           hashtags: ["#tattoo", "#art"]
         };
 
         return {
           id: Date.now() + i + Math.random(),
-          date: new Date(plan.date),
+          date: slot ? new Date(slot.scheduledAt) : new Date(plan.date),
           image: url,
           type: plan.type,
           status: 'rascunho',
@@ -472,9 +466,10 @@ export default function GaleriaIA() {
         };
       });
 
-      // Não agenda automaticamente! Posts aparecem como rascunho na galeria
-      // para o usuário revisar e agendar manualmente depois
-      savePosts([...currentPosts, ...newItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      // Auto-schedule each post based on active integration channels
+      const scheduledItems = await Promise.all(newItems.map(item => schedulePostIntegrations(item)));
+
+      savePosts([...currentPosts, ...scheduledItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     } catch (error: any) {
       console.error("Critical error in AI planning:", error);
       alert(error?.message || "Ocorreu um erro ao planejar sua estratégia. Verifique sua conexão.");
@@ -500,14 +495,7 @@ export default function GaleriaIA() {
   const handleDrop = (e: React.DragEvent, targetDay: Date) => {
     e.preventDefault();
     if (draggedPostId === null) return;
-    savePosts(posts.map(p => p.id === draggedPostId ? { 
-      ...p, 
-      date: targetDay, 
-      scheduledDate: format(targetDay, 'yyyy-MM-dd'),
-      scheduledTime: p.scheduledTime?.includes?.('T') 
-        ? `${format(targetDay, 'yyyy-MM-dd')}T${p.scheduledTime.split('T')[1]}`
-        : p.scheduledTime
-    } : p));
+    savePosts(posts.map(p => p.id === draggedPostId ? { ...p, date: targetDay, scheduledDate: format(targetDay, 'yyyy-MM-dd') } : p));
     setDraggedPostId(null);
   };
 

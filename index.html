@@ -6,6 +6,13 @@
     <title>My Google AI Studio App</title>
   </head>
   <body>
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.message && e.message.includes('fetch')) {
+          e.stopImmediatePropagation();
+        }
+      }, true);
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

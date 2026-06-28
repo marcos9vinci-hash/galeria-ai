@@ -75,8 +75,8 @@ export default function BufferScheduleManager() {
     try {
       const response = await fetch(`/api/buffer/schedule/${id}`);
       const data = await response.json();
-      if (data.data?.channel?.postingSchedule) {
-        setSchedules(data.data.channel.postingSchedule);
+      if (data.data?.node?.postingSchedules) {
+        setSchedules(data.data.node.postingSchedules);
       } else {
         setSchedules([]);
       }
