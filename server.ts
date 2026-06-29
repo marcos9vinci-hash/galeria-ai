@@ -186,7 +186,7 @@ async function generateContentWithAi({
   }
 }
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = import.meta.url ? fileURLToPath(import.meta.url) : process.argv[1];
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
