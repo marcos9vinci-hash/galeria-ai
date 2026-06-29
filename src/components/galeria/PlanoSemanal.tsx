@@ -35,6 +35,9 @@ export default function PlanoSemanal({ posts, onClose }: PlanoSemanalProps) {
   const [niche, setNiche] = useState("tattoo");
   const [frequency, setFrequency] = useState("5");
   const [objective, setObjective] = useState("");
+  const [q2Goal, setQ2Goal] = useState("");
+  const [q3Goal, setQ3Goal] = useState("");
+  const [q4Goal, setQ4Goal] = useState("");
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
   const [copied, setCopied] = useState(false);
@@ -50,13 +53,15 @@ export default function PlanoSemanal({ posts, onClose }: PlanoSemanalProps) {
   const handleGenerate = async () => {
     setLoading(true);
     const nicheLabel = NICHES.find(n => n.value === niche)?.label || niche;
-    // const nextWeekStart = nextMonday(new Date());
 
     try {
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Crie um plano de conteúdo semanal para o Instagram de um negócio do nicho: "${nicheLabel}".
 Frequência: ${frequency} posts por semana.
 ${objective ? `Objetivo da semana: ${objective}.` : ''}
+${q2Goal ? `Objetivo para o segundo trimestre (Q2): ${q2Goal}.` : ''}
+${q3Goal ? `Objetivo para o terceiro trimestre (Q3): ${q3Goal}.` : ''}
+${q4Goal ? `Objetivo para o quarto trimestre (Q4): ${q4Goal}.` : ''}
 ${publishedTags ? `Hashtags que já funcionaram bem: ${publishedTags}.` : ''}
 
 Gere um plano para ${frequency} dias da próxima semana. Cada dia deve ter:
@@ -161,6 +166,21 @@ Responda com os posts no array "posts" e uma "estrategia_da_semana" resumindo o 
               value={objective}
               onChange={e => setObjective(e.target.value)}
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+             <div className="space-y-1">
+                <Label>Objetivo Q2</Label>
+                <Input value={q2Goal} onChange={e => setQ2Goal(e.target.value)} />
+             </div>
+             <div className="space-y-1">
+                <Label>Objetivo Q3</Label>
+                <Input value={q3Goal} onChange={e => setQ3Goal(e.target.value)} />
+             </div>
+             <div className="space-y-1">
+                <Label>Objetivo Q4</Label>
+                <Input value={q4Goal} onChange={e => setQ4Goal(e.target.value)} />
+             </div>
           </div>
 
           <Button className="w-full" onClick={handleGenerate} disabled={loading}>

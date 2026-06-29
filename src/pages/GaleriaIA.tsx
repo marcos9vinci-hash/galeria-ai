@@ -16,6 +16,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
 import { postService } from "@/services/postService";
+import { ensureAnonymousAuth } from "@/lib/auth";
 import { db, auth } from "@/lib/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, doc, setDoc } from "firebase/firestore";
 
@@ -26,6 +27,7 @@ import InstagramIntegracaoModal, { InstagramStatusBadge } from "@/components/int
 import PostEditor from "@/components/galeria/PostEditor";
 import SugerirEspacos from "@/components/galeria/SugerirEspacos";
 import PlanoSemanal from "@/components/galeria/PlanoSemanal";
+import PlanejamentoTrimestral from "@/components/galeria/PlanejamentoTrimestral";
 import ConfigWhatsApp from "@/components/galeria/ConfigWhatsApp";
 import EstudioIAWorkflow from "@/components/galeria/EstudioIAWorkflow";
 import InstagramInsights from "@/components/galeria/InstagramInsights";
@@ -42,6 +44,7 @@ export default function GaleriaIA() {
   console.log("GaleriaIA component is being initialized");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [posts, setPosts] = useState<any[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null means checking
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editorState, setEditorState] = useState<any>(null);
   const [draggedPostId, setDraggedPostId] = useState<number | null>(null);
@@ -240,12 +243,19 @@ export default function GaleriaIA() {
     }
     
     // Auth might take a moment to initialize
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
+        setIsAuthenticated(true);
         loadPosts();
       } else {
-        // Anonymous auth not available — localStorage already loaded above
-        console.warn("User not authenticated. Anonymous sign-in is not enabled.");
+        // Automatically sign in anonymously
+        try {
+            await ensureAnonymousAuth();
+            // No need to call loadPosts here, onAuthStateChanged will fire again with the new user
+        } catch (err) {
+            console.error("Error signing in anonymously", err);
+            setIsAuthenticated(false);
+        }
       }
     });
     
@@ -285,12 +295,7 @@ export default function GaleriaIA() {
           caption: p.caption || '',
           date: p.date instanceof Date ? p.date.toISOString() : p.date,
           type: p.type || 'feed',
-          status: p.status || 'rascunho',
-          scheduledTime: p.scheduledTime || null,
-          scheduledAt: p.scheduledAt || null,
-          hashtags: p.hashtags || [],
-          cta: p.cta || null,
-          scheduledDate: p.scheduledDate || null
+          status: p.status || 'rascunho'
         };
         
         if (p.id && typeof p.id === 'string' && !p.id.startsWith('temp_') && !String(p.id).includes('.')) {
@@ -331,18 +336,7 @@ export default function GaleriaIA() {
           const selectedProfile = profiles[0]; // Usa o primeiro canal configurado por padrão
           
           const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
-          // Usa a data corrente do post (arrastada no calendário) como base
-          // e preserva o horário manual se existir
-          let scheduledIso: string;
-          const postDate = typeof post.date === 'string' ? post.date : post.date?.toISOString?.() || post.date;
-          if (post.scheduledTime && post.scheduledTime.includes('T')) {
-            // scheduledTime é ISO completo: substitui só a parte da data
-            const baseDate = postDate?.substring(0, 10) || new Date().toISOString().substring(0, 10);
-            const timePart = post.scheduledTime.includes('T') ? post.scheduledTime.substring(11, 16) : '12:00';
-            scheduledIso = `${baseDate}T${timePart}:00.000Z`;
-          } else {
-            scheduledIso = postDate || new Date().toISOString();
-          }
+          const scheduledIso = post.scheduledTime || post.date;
           
           const response = await fetch("/api/buffer/create-update", {
             method: "POST",
@@ -372,16 +366,7 @@ export default function GaleriaIA() {
       // 2. Senão, se o Instagram direto estiver conectado, agenda na fila direta do servidor
       if (igConnected && profileInfo?.igId) {
         const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
-        // Usa a data corrente do post (arrastada no calendário) como base
-        const postDate2 = typeof post.date === 'string' ? post.date : post.date?.toISOString?.() || post.date;
-        let scheduledIso: string;
-        if (post.scheduledTime && post.scheduledTime.includes('T')) {
-          const baseDate = postDate2?.substring(0, 10) || new Date().toISOString().substring(0, 10);
-          const timePart = post.scheduledTime.includes('T') ? post.scheduledTime.substring(11, 16) : '12:00';
-          scheduledIso = `${baseDate}T${timePart}:00.000Z`;
-        } else {
-          scheduledIso = postDate2 || new Date().toISOString();
-        }
+        const scheduledIso = post.scheduledTime || post.date;
         
         const response = await fetch("/api/instagram/publish", {
           method: "POST",
@@ -491,9 +476,10 @@ export default function GaleriaIA() {
         };
       });
 
-      // Não agenda automaticamente! Posts aparecem como rascunho na galeria
-      // para o usuário revisar e agendar manualmente depois
-      savePosts([...currentPosts, ...newItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      // Auto-schedule each post based on active integration channels
+      const scheduledItems = await Promise.all(newItems.map(item => schedulePostIntegrations(item)));
+
+      savePosts([...currentPosts, ...scheduledItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     } catch (error: any) {
       console.error("Critical error in AI planning:", error);
       alert(error?.message || "Ocorreu um erro ao planejar sua estratégia. Verifique sua conexão.");
@@ -519,14 +505,7 @@ export default function GaleriaIA() {
   const handleDrop = (e: React.DragEvent, targetDay: Date) => {
     e.preventDefault();
     if (draggedPostId === null) return;
-    savePosts(posts.map(p => p.id === draggedPostId ? { 
-      ...p, 
-      date: targetDay, 
-      scheduledDate: format(targetDay, 'yyyy-MM-dd'),
-      scheduledTime: p.scheduledTime?.includes?.('T') 
-        ? `${format(targetDay, 'yyyy-MM-dd')}T${p.scheduledTime.split('T')[1]}`
-        : p.scheduledTime
-    } : p));
+    savePosts(posts.map(p => p.id === draggedPostId ? { ...p, date: targetDay, scheduledDate: format(targetDay, 'yyyy-MM-dd') } : p));
     setDraggedPostId(null);
   };
 
@@ -641,148 +620,139 @@ export default function GaleriaIA() {
           )}
         </AnimatePresence>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="w-full max-w-sm grid grid-cols-3 mx-auto bg-muted/40 p-1 rounded-full border border-border/50">
-            <TabsTrigger value="calendario" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Galeria</TabsTrigger>
-            <TabsTrigger value="agendamentos" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Agenda</TabsTrigger>
-            <TabsTrigger value="insights" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Insights</TabsTrigger>
-          </TabsList>
+        {isAuthenticated === null ? (
+          <div className="flex h-screen items-center justify-center text-muted-foreground">Carregando autenticação...</div>
+        ) : isAuthenticated === false ? (
+          <div className="flex h-screen items-center justify-center text-destructive">Usuário não autenticado. Por favor, habilite a autenticação anônima no Firebase Console.</div>
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="w-full max-w-sm grid grid-cols-4 mx-auto bg-muted/40 p-1 rounded-full border border-border/50">
+              <TabsTrigger value="calendario" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Galeria</TabsTrigger>
+              <TabsTrigger value="agendamentos" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Agenda</TabsTrigger>
+              <TabsTrigger value="insights" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Insights</TabsTrigger>
+              <TabsTrigger value="trimestre" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Trimestral</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="calendario" className="mt-0">
-            <div className="grid gap-6 md:grid-cols-[1fr,minmax(300px,400px)]">
-              <Card className="border-none shadow-none bg-transparent">
-                <CardContent className="p-0 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-card/30 p-2 rounded-2xl border border-border/40">
-                    <div className="flex items-center gap-3">
-                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
-                       <h2 className="text-sm font-bold capitalize w-32 text-center">{format(currentDate, 'MMMM yyyy', { locale: ptBR })}</h2>
-                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
+            <TabsContent value="calendario" className="mt-0">
+              <div className="grid gap-6 md:grid-cols-[1fr,minmax(300px,400px)]">
+                <Card className="border-none shadow-none bg-transparent">
+                  <CardContent className="p-0 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-card/30 p-2 rounded-2xl border border-border/40">
+                      <div className="flex items-center gap-3">
+                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+                         <h2 className="text-sm font-bold capitalize w-32 text-center">{format(currentDate, 'MMMM yyyy', { locale: ptBR })}</h2>
+                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                         <Button 
+                           variant="outline" 
+                           size="sm" 
+                           className="h-8 text-[10px] font-bold text-destructive border-destructive/20 hover:bg-destructive/10 gap-1.5"
+                           onClick={handleClearGallery}
+                         >
+                           <Trash2 className="w-3.5 h-3.5" /> LIMPAR GALERIA
+                         </Button>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2">
-                       <Button 
-                         variant="outline" 
-                         size="sm" 
-                         className="h-8 text-[10px] font-bold text-destructive border-destructive/20 hover:bg-destructive/10 gap-1.5"
-                         onClick={handleClearGallery}
-                       >
-                         <Trash2 className="w-3.5 h-3.5" /> LIMPAR GALERIA
-                       </Button>
+
+                    <div className="grid grid-cols-7 gap-1.5 md:gap-3">
+                      {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
+                        <div key={d} className="text-[10px] font-bold text-center uppercase text-muted-foreground py-2">{d}</div>
+                      ))}
+                      {Array.from({ length: startingDay }).map((_, i) => (
+                        <div key={`e-${i}`} className="aspect-square rounded-2xl bg-muted/10 border border-border/10 border-dashed" />
+                      ))}
+                      {daysInMonth.map(day => {
+                        const dayStr = format(day, 'yyyy-MM-dd');
+                        const dayPosts = postsByDay[dayStr] || [];
+                        const today = isToday(day);
+
+                        return (
+                          <div
+                            key={dayStr}
+                            className={`aspect-square relative rounded-2xl flex flex-col transition-all group border-2 overflow-hidden
+                              ${today ? 'bg-primary/5 border-primary shadow-[0_0_15px_-5px_rgba(var(--primary),0.3)]' : 'bg-card border-border/40'}
+                              ${draggedPostId !== null ? 'hover:scale-105 hover:border-primary hover:shadow-xl' : ''}
+                              ${dayPosts.length > 0 ? 'ring-offset-2 ring-primary/20' : ''}
+                            `}
+                            onClick={() => { if (dayPosts.length > 0) setEditorState({ posts: dayPosts, index: 0 }); }}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => handleDrop(e, day)}
+                          >
+                            {/* Image - Full Cover */}
+                            {dayPosts.length > 0 && (
+                              <div 
+                                draggable 
+                                onDragStart={(e) => handleDragStart(e, dayPosts[0].id)}
+                                className="absolute inset-0 cursor-pointer"
+                              >
+                                <img src={dayPosts[0].image} alt="" className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-150" />
+                                <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ring-2 ring-white ${STATUS_OPTIONS_LOCAL.find(s => s.value === dayPosts[0].status)?.color || 'bg-gray-400'}`} />
+                                {dayPosts.length > 1 && (
+                                  <div className="absolute top-1 left-1 bg-black/75 backdrop-blur-xs text-white text-[8px] font-bold px-1 rounded-sm">
+                                    +{dayPosts.length - 1}
+                                  </div>
+                                )}
+                                {/* Visual overlay with scheduled hour and post type */}
+                                {getPostTimeFormatted(dayPosts[0]) && (
+                                  <div className="absolute inset-x-0 bottom-0 bg-black/75 backdrop-blur-[1px] text-white py-0.5 px-1 flex items-center justify-between text-[8px] font-bold">
+                                    <span className="flex items-center gap-0.5 text-amber-300">
+                                      <Clock className="w-2 h-2 text-amber-300" />
+                                      {getPostTimeFormatted(dayPosts[0])}
+                                    </span>
+                                    <span className="capitalize text-[7px] text-gray-300 truncate max-w-[30px]">
+                                      {dayPosts[0].type}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Day Number */}
+                            <span className={`absolute top-2 left-2 z-10 text-[10px] font-bold ${today ? 'text-primary' : 'text-muted-foreground'} ${dayPosts.length > 0 ? 'bg-black/50 text-white px-1.5 py-0.5 rounded-full' : ''}`}>
+                              {format(day, 'd')}
+                            </span>
+                            
+                            {dayPosts.length === 0 && (
+                              <div className="flex-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Plus className="w-4 h-4 text-muted-foreground/40" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="grid grid-cols-7 gap-1.5 md:gap-3">
-                    {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
-                      <div key={d} className="text-[10px] font-bold text-center uppercase text-muted-foreground py-2">{d}</div>
-                    ))}
-                    {Array.from({ length: startingDay }).map((_, i) => (
-                      <div key={`e-${i}`} className="aspect-square rounded-2xl bg-muted/10 border border-border/10 border-dashed" />
-                    ))}
-                    {daysInMonth.map(day => {
-                      const dayStr = format(day, 'yyyy-MM-dd');
-                      const dayPosts = postsByDay[dayStr] || [];
-                      const today = isToday(day);
-
-                      return (
-                        <div
-                          key={dayStr}
-                          className={`aspect-square relative rounded-2xl flex flex-col transition-all group border-2 overflow-hidden
-                            ${today ? 'bg-primary/5 border-primary shadow-[0_0_15px_-5px_rgba(var(--primary),0.3)]' : 'bg-card border-border/40'}
-                            ${draggedPostId !== null ? 'hover:scale-105 hover:border-primary hover:shadow-xl' : ''}
-                            ${dayPosts.length > 0 ? 'ring-offset-2 ring-primary/20' : ''}
-                          `}
-                          onClick={() => { if (dayPosts.length > 0) setEditorState({ posts: dayPosts, index: 0 }); }}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => handleDrop(e, day)}
-                        >
-                          {/* Image - Full Cover */}
-                          {dayPosts.length > 0 && (
-                            <div 
-                              draggable 
-                              onDragStart={(e) => handleDragStart(e, dayPosts[0].id)}
-                              className="absolute inset-0 cursor-pointer"
-                            >
-                              <img src={dayPosts[0].image} alt="" className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-150" />
-                              <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ring-2 ring-white ${STATUS_OPTIONS_LOCAL.find(s => s.value === dayPosts[0].status)?.color || 'bg-gray-400'}`} />
-                              {dayPosts.length > 1 && (
-                                <div className="absolute top-1 left-1 bg-black/75 backdrop-blur-xs text-white text-[8px] font-bold px-1 rounded-sm">
-                                  +{dayPosts.length - 1}
-                                </div>
-                              )}
-                              {/* Visual overlay with scheduled hour and post type */}
-                              {getPostTimeFormatted(dayPosts[0]) && (
-                                <div className="absolute inset-x-0 bottom-0 bg-black/75 backdrop-blur-[1px] text-white py-0.5 px-1 flex items-center justify-between text-[8px] font-bold">
-                                  <span className="flex items-center gap-0.5 text-amber-300">
-                                    <Clock className="w-2 h-2 text-amber-300" />
-                                    {getPostTimeFormatted(dayPosts[0])}
-                                  </span>
-                                  <span className="capitalize text-[7px] text-gray-300 truncate max-w-[30px]">
-                                    {dayPosts[0].type}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Day Number */}
-                          <span className={`absolute top-2 left-2 z-10 text-[10px] font-bold ${today ? 'text-primary' : 'text-muted-foreground'} ${dayPosts.length > 0 ? 'bg-black/50 text-white px-1.5 py-0.5 rounded-full' : ''}`}>
-                            {format(day, 'd')}
-                          </span>
-                          
-                          {dayPosts.length === 0 && (
-                            <div className="flex-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                               <Plus className="w-4 h-4 text-muted-foreground/40" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Sidebar Helpers */}
-              <div className="space-y-6">
-                <motion.div
-                  whileHover={{ scale: 1.01 }}
-                  className="p-4 bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent rounded-2xl border border-primary/20 shadow-md relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -z-10" />
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-primary/20 rounded-lg text-primary mt-0.5">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-xs font-bold text-primary">Estúdio de Campanhas (Agente IA)</h4>
-                      <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-                        Defina um tema (ex: "Promoção de Outubro" ou "Significados Botânicos") e anexe fotos de tatuagens. O Agente de IA criará e agendará uma campanha inteira em massa para você de forma coesa e sequencial!
-                      </p>
-                      <Button 
-                        size="sm" 
-                        className="w-full h-8 mt-3 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shadow-sm"
-                        onClick={() => setShowEstudioIA(true)}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" /> Iniciar Co-Criação IA
-                      </Button>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button 
-                    variant="outline"
-                    className="w-full h-14 bg-card shadow-sm gap-2 text-xs font-bold border-primary/20 hover:border-primary/50"
-                    onClick={() => setShowPlanoSemanal(true)}
+                {/* Sidebar Helpers */}
+                <div className="space-y-6">
+                  <motion.div
+                    whileHover={{ scale: 1.01 }}
+                    className="p-4 bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent rounded-2xl border border-primary/20 shadow-md relative overflow-hidden"
                   >
-                    <CalendarDays className="w-5 h-5 text-primary" />
-                    Planejamento Semanal
-                  </Button>
-                </motion.div>
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -z-10" />
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-primary/20 rounded-lg text-primary mt-0.5">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-xs font-bold text-primary">Estúdio de Campanhas (Agente IA)</h4>
+                        <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                          Defina um tema (ex: "Promoção de Outubro" ou "Significados Botânicos") e anexe fotos de tatuagens. O Agente de IA criará e agendará uma campanha inteira em massa para você de forma coesa e sequencial!
+                        </p>
+                        <Button 
+                          size="sm" 
+                          className="w-full h-8 mt-3 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shadow-sm"
+                          onClick={() => setShowEstudioIA(true)}
+                        >
+                          <Sparkles className="w-3.5 h-3.5" /> Iniciar Co-Criação IA
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
 
-                {profileInfo && (
                   <motion.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -790,43 +760,62 @@ export default function GaleriaIA() {
                     <Button 
                       variant="outline"
                       className="w-full h-14 bg-card shadow-sm gap-2 text-xs font-bold border-primary/20 hover:border-primary/50"
-                      onClick={() => setShowNicheConfig(true)}
+                      onClick={() => setShowPlanoSemanal(true)}
                     >
-                      <Target className="w-5 h-5 text-primary animate-pulse" />
-                      Estratégia de Nicho
+                      <CalendarDays className="w-5 h-5 text-primary" />
+                      Planejamento Semanal
                     </Button>
                   </motion.div>
-                )}
 
-                <SugerirEspacos 
-                   posts={posts} 
-                   onSelect={(s: any) => {
-                      setCurrentDate(s.date);
-                      // In a real app we'd open a creator modal here
-                   }} 
-                />
+                  {profileInfo && (
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button 
+                        variant="outline"
+                        className="w-full h-14 bg-card shadow-sm gap-2 text-xs font-bold border-primary/20 hover:border-primary/50"
+                        onClick={() => setShowNicheConfig(true)}
+                      >
+                        <Target className="w-5 h-5 text-primary animate-pulse" />
+                        Estratégia de Nicho
+                      </Button>
+                    </motion.div>
+                  )}
+
+                  <SugerirEspacos 
+                     posts={posts} 
+                     onSelect={(s: any) => {
+                        setCurrentDate(s.date);
+                        // In a real app we'd open a creator modal here
+                     }} 
+                  />
+                </div>
               </div>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="agendamentos">
-            <div className="max-w-2xl mx-auto">
-               <CalendarioAgendamentos 
-                 posts={posts} 
-                 bufferPosts={bufferPosts}
-                 loadingBuffer={loadingBuffer}
-                 onPostClick={(p: any) => {
-                    const dayPosts = posts.filter(pp => format(new Date(pp.date), 'yyyy-MM-dd') === format(new Date(p.date), 'yyyy-MM-dd'));
-                    setEditorState({ posts: dayPosts.length ? dayPosts : [p], index: dayPosts.findIndex(pp => pp.id === p.id) || 0 });
-                 }} 
-               />
-            </div>
-          </TabsContent>
+            <TabsContent value="agendamentos">
+              <div className="max-w-2xl mx-auto">
+                 <CalendarioAgendamentos 
+                   posts={posts} 
+                   bufferPosts={bufferPosts}
+                   loadingBuffer={loadingBuffer}
+                   onPostClick={(p: any) => {
+                      const dayPosts = posts.filter(pp => format(new Date(pp.date), 'yyyy-MM-dd') === format(new Date(p.date), 'yyyy-MM-dd'));
+                      setEditorState({ posts: dayPosts.length ? dayPosts : [p], index: dayPosts.findIndex(pp => pp.id === p.id) || 0 });
+                   }} 
+                 />
+              </div>
+            </TabsContent>
 
-          <TabsContent value="insights">
-            {activeTab === "insights" && <InstagramInsights igId={profileInfo?.igId} />}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="insights">
+              {activeTab === "insights" && <InstagramInsights igId={profileInfo?.igId} />}
+            </TabsContent>
+            <TabsContent value="trimestre">
+              <PlanejamentoTrimestral />
+            </TabsContent>
+          </Tabs>
+        )}
       </main>
 
       {/* Floating Action Button for Mobile */}

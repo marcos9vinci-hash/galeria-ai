@@ -1,10 +1,10 @@
 {
-  "projectId": "memorizeai-7b8fd",
-  "appId": "1:287874618983:web:30718f0f4f5ad68cb4e6c2",
-  "apiKey": "AIzaSyAhIXcG4ReuncxNBZSqjXYOu7Exka_TNo0",
-  "authDomain": "memorizeai-7b8fd.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-ce38ece0-6c9b-4ceb-80c9-38b6c3c17de2",
-  "storageBucket": "memorizeai-7b8fd.firebasestorage.app",
-  "messagingSenderId": "287874618983",
-  "measurementId": ""
+  "projectId": "filmflow-464be",
+  "appId": "1:450110977008:web:5f4378abc76a8fbb0d2335",
+  "apiKey": "AIzaSyBibKYydlc89VrNEBLuOOAFUFcbLQ9YFdU",
+  "authDomain": "filmflow-464be.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-galeriaiatattooc-ce38ece0-6c9b-4ceb-80c9-38b6c3c17de2",
+  "storageBucket": "filmflow-464be.firebasestorage.app",
+  "messagingSenderId": "450110977008",
+  "measurementId": "G-QHGL7CF210"
 }
