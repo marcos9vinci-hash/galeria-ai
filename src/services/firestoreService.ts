@@ -1,6 +1,6 @@
 import { db } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, deleteDoc } from 'firebase/firestore';
-import { Post, Niche, CarouselSlide, ScheduleConfig, Insight } from '../types';
+import { Post, Niche, CarouselSlide, ScheduleConfig, Insight } from '../models/types';
 
 export const firestoreService = {
   // Posts
