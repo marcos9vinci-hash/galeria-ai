@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 import sharp from "sharp";
 import { GoogleGenAI, Type } from "@google/genai";
 import FormData from "form-data";
+import { callWithRota } from "./src/rota-ia.js";
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { getNicheConfig, saveNicheConfig, addHashtag, removeHashtag, addProfile, removeProfile, saveScheduleHours } from "./nicheConfig.js";
@@ -1453,18 +1454,98 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
         const pollUrl = `https://image.pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
         const imageResp = await axios.get(pollUrl, { responseType: "arraybuffer", timeout: 25000 });
         const base64 = Buffer.from(imageResp.data, "binary").toString("base64");
-        const base64Image = `data:image/png;base64,${base64}`;
-        return res.json({ imageUrl: base64Image });
-      } catch (err: any) {
-        console.log(`[GeminiIA] Redundant channel backup alert: ${err.message}`);
-        return res.status(500).json({ error: "Erro no canal de imagem do Gemini: " + error.message });
-      }
-    }
-  });
+                const base64Image = `data:image/png;base64,${base64}`;
+                return res.json({ imageUrl: base64Image });
+              } catch (err: any) {
+                console.log(`[GeminiIA] Redundant channel backup alert: ${err.message}`);
+                return res.status(500).json({ error: "Erro no canal de imagem do Gemini: " + error.message });
+              }
+            }
+          });
 
-  // --- Buffer API Integration ---
-  app.post("/api/buffer/create-idea", async (req, res) => {
-    const { title, text, organizationId } = req.body;
+          // ═══════════════════════════════════════════════════════════════
+          // ROTA-IA — Roteador Inteligente de IAs Gratuitas
+          // Ciclo infinito: tenta melhores → fallback automático → nunca paga
+          // ═══════════════════════════════════════════════════════════════
+          app.post("/api/ai/rota", async (req, res) => {
+            const { task, prompt, systemInstruction, maxTokens, temperature, imageUrl, jsonMode } = req.body;
+
+            if (!task || !prompt) {
+              return res.status(400).json({ error: "Faltam task e/ou prompt" });
+            }
+
+            const VALID_TASKS = ['chat', 'coding', 'creative', 'vision', 'long_context', 'fast', 'reasoning', 'strategy', 'translation', 'summary'];
+            if (!VALID_TASKS.includes(task)) {
+              return res.status(400).json({ 
+                error: `Task inválida. Use: ${VALID_TASKS.join(', ')}`,
+                hint: 'Para imagem use /api/ai/generate-image',
+              });
+            }
+
+            try {
+              console.log(`[RotaIA] 🚦 Iniciando roteamento — task=${task}`);
+
+              const result = await callWithRota({
+                task,
+                prompt,
+                systemInstruction,
+                maxTokens: maxTokens || 4096,
+                temperature: temperature ?? 0.7,
+                imageUrl,
+                jsonMode: jsonMode || false,
+              });
+
+              if (!result.success) {
+                console.error(`[RotaIA] ❌ Falha total: ${result.error}`);
+                return res.status(503).json({
+                  error: result.error,
+                  fallbackHistory: result.fallbackHistory,
+                  hint: 'Todas as IAs gratuitas falharam. Tente novamente mais tarde.',
+                });
+              }
+
+              console.log(`[RotaIA] ✅ Sucesso: ${result.modelUsed} (tentativa #${result.attempt})`);
+
+              return res.json({
+                text: result.text,
+                model: result.modelUsed,
+                provider: result.provider,
+                attempt: result.attempt,
+                success: true,
+              });
+            } catch (error: any) {
+              console.error(`[RotaIA] Erro crítico:`, error.message);
+              return res.status(500).json({ error: "Erro interno no roteador: " + error.message });
+            }
+          });
+
+          // STATUS — Lista providers e modelos gratuitos disponíveis
+          app.get("/api/ai/providers", (req, res) => {
+            const keys = {
+              openrouter: !!(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'undefined'),
+              gemini: !!((process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) !== 'undefined'),
+              opencode: !!(process.env.OPENCODE_ZEN_API_KEY && process.env.OPENCODE_ZEN_API_KEY !== 'undefined'),
+              cohere: !!(process.env.COHERE_API_KEY && process.env.COHERE_API_KEY !== 'undefined'),
+              groq: !!(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'undefined'),
+            };
+
+            res.json({
+              availableProviders: keys,
+              chains: {
+                chat: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'groq:llama-3.3-70b-versatile', 'gemini:gemini-2.5-flash'],
+                coding: ['opencode:opencode', 'cohere/command-r7b-12-2024', 'qwen-2.5-coder-32b-instruct', 'groq:llama-3.3-70b-versatile'],
+                creative: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'gemini:gemini-2.5-flash'],
+                vision: ['gemini:gemini-2.0-flash', 'anthropic/claude-3-haiku', 'gemini:gemini-2.5-flash'],
+                fast: ['groq:llama-3.1-8b-instant', 'mistral-nemo', 'gemini:gemini-2.5-flash'],
+                reasoning: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'mistralai/mistral-large'],
+                strategy: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'gemini:gemini-2.5-pro'],
+              },
+            });
+          });
+
+          // --- Buffer API Integration ---
+          app.post("/api/buffer/create-idea", async (req, res) => {
+            const { title, text, organizationId } = req.body;
     const token = getBufferToken(req);
 
     try {
