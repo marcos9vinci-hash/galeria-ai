@@ -1,18 +1,17 @@
 // Bridge component to simulate the base44 SDK used in the original snippets
 // but proxies call to the backend to protect GEMINI_API_KEY.
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
+
 export const base44 = {
   integrations: {
     Core: {
       UploadFile: async ({ file }: { file: File }): Promise<{ file_url: string }> => {
-        // In AI Studio, we'd normally upload to a server or handle locally.
-        // For this preview, we'll return a data URL as the "uploaded url"
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve({ file_url: reader.result as string });
-          };
-          reader.readAsDataURL(file);
-        });
+        // Upload to Firebase Storage instead of base64
+        const fileRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return { file_url: downloadURL };
       },
       InvokeLLM: async ({ prompt, file_urls, response_json_schema }: any) => {
         try {
