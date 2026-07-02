@@ -6,7 +6,8 @@ export const base44 = {
     Core: {
       UploadFile: async ({ file }: { file: File }): Promise<{ file_url: string }> => {
         // Compress image client-side to stay under 1MB Firestore limit
-        const compressedDataUrl = await compressImageToBase64(file, 1024 * 1024); // 1MB target
+        // Base64 adds ~33% overhead, so target ~750KB binary = ~1MB base64
+        const compressedDataUrl = await compressImageToBase64(file, 750 * 1024); // 750KB target
         return { file_url: compressedDataUrl };
       },
       InvokeLLM: async ({ prompt, file_urls, response_json_schema }: any) => {
@@ -88,15 +89,24 @@ function compressImageToBase64(file: File, maxBytes: number = 1024 * 1024): Prom
       }
       
       // If still too large, downscale further
-      if (!bestDataUrl || bestDataUrl.length > maxBytes) {
-        const scale = Math.sqrt(maxBytes / dataUrl.length) * 0.9;
-        canvas.width = Math.round(width * scale);
-        canvas.height = Math.round(height * scale);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        bestDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-      }
+            if (!bestDataUrl || bestDataUrl.length > maxBytes) {
+              const scale = Math.sqrt(maxBytes / dataUrl.length) * 0.9;
+              canvas.width = Math.round(width * scale);
+              canvas.height = Math.round(height * scale);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              bestDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            }
       
-      resolve(bestDataUrl || dataUrl);
+            // Final safety: if STILL too large, force tiny
+            if (bestDataUrl.length > maxBytes) {
+              canvas.width = 512;
+              canvas.height = 512;
+              ctx.drawImage(img, 0, 0, 512, 512);
+              bestDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+            }
+      
+            console.log(`[UploadFile] Compressed: ${file.size} bytes -> ${bestDataUrl.length} chars (${(bestDataUrl.length/1024).toFixed(1)}KB base64)`);
+            resolve(bestDataUrl || dataUrl);
     };
   });
 }

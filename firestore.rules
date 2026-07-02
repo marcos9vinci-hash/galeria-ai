@@ -10,22 +10,27 @@ service cloud.firestore {
     
     match /niches/{nicheId} {
         allow read, write: if isOwner(resource.data.userId);
+        allow create: if isOwner(request.resource.data.userId);
     }
 
     match /posts/{postId} {
       allow read, write: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
     }
     
     match /carouselSlides/{slideId} {
        allow read, write: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
 
     match /scheduleConfigs/{configId} {
        allow read, write: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
     
     match /insights/{insightId} {
        allow read, write: if isOwner(resource.data.userId);
+       allow create: if isOwner(request.resource.data.userId);
     }
   }
 }
