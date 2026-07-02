@@ -291,7 +291,7 @@ export default function GaleriaIA() {
         if (resp.ok) insightsData = await resp.json();
       } catch {}
       if (!auth.currentUser) throw new Error("Usuário não autenticado.");
-      const availableSlots = await postService.getAvailableSlots(auth.currentUser.uid);
+            const availableSlots = await postService.getAvailableSlots(auth.currentUser.uid) as { id: string; scheduledAt: any }[];
       const strategyResp = await fetch("/api/studio/plan-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -308,23 +308,23 @@ export default function GaleriaIA() {
         throw new Error(parsedErr?.details || parsedErr?.error || `Erro (Status ${strategyResp.status})`);
       }
       const newItems = uploadedImages.map((url, i) => {
-        const slot = availableSlots[i];
-        const plan = aiStrategy[i] || {
-          type: 'feed', date: addDays(new Date(), i).toISOString(),
-          caption: "✨ Trabalho finalizado no estúdio @aflor da pele!\n\n#tattoo #tatuagem #ink",
-          hashtags: ["#tattoo", "#art"]
-        };
-        return {
-          id: Date.now() + i + Math.random(),
-          date: slot ? new Date(slot.scheduledAt) : new Date(plan.date),
-          image: url, type: plan.type, status: 'rascunho',
-          caption: plan.caption, hashtags: plan.hashtags,
-          cta: 'Agende seu horário pelo link no perfil! 👆',
-          scheduledTime: plan.date,
-          editorSettings: { brightness: 100, contrast: 100, saturate: 100, rotate: 0, scaleX: 1, scaleY: 1 },
-          aiReasoning: plan.reasoning
-        };
-      });
+              const slot = availableSlots[i];
+              const plan = aiStrategy[i] || {
+                type: 'feed', date: addDays(new Date(), i).toISOString(),
+                caption: "✨ Trabalho finalizado no estúdio @aflor da pele!\n\n#tattoo #tatuagem #ink",
+                hashtags: ["#tattoo", "#art"]
+              };
+              return {
+                id: Date.now() + i + Math.random(),
+                date: slot ? slot.scheduledAt.toDate() : new Date(plan.date),
+                image: url, type: plan.type, status: 'rascunho',
+                caption: plan.caption, hashtags: plan.hashtags,
+                cta: 'Agende seu horário pelo link no perfil! 👆',
+                scheduledTime: plan.date,
+                editorSettings: { brightness: 100, contrast: 100, saturate: 100, rotate: 0, scaleX: 1, scaleY: 1 },
+                aiReasoning: plan.reasoning
+              };
+            });
       const scheduledItems = await Promise.all(newItems.map(item => schedulePostIntegrations(item)));
       savePosts([...posts, ...scheduledItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     } catch (error: any) {

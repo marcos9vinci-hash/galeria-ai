@@ -1467,7 +1467,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
           // ROTA-IA — Roteador Inteligente de IAs Gratuitas
           // Ciclo infinito: tenta melhores → fallback automático → nunca paga
           // ═══════════════════════════════════════════════════════════════
-          app.post("/api/ai/rota", async (req, res) => {
+                    app.post("/api/ai/rota", async (req, res) => {
             const { task, prompt, systemInstruction, maxTokens, temperature, imageUrl, jsonMode } = req.body;
 
             if (!task || !prompt) {
@@ -1483,39 +1483,52 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
             }
 
             try {
-              console.log(`[RotaIA] 🚦 Iniciando roteamento — task=${task}`);
+              console.log(`[RotaIA] 🚦 Roteando via 9Router — task=${task}`);
 
-              const result = await callWithRota({
-                task,
-                prompt,
-                systemInstruction,
-                maxTokens: maxTokens || 4096,
-                temperature: temperature ?? 0.7,
-                imageUrl,
-                jsonMode: jsonMode || false,
-              });
-
-              if (!result.success) {
-                console.error(`[RotaIA] ❌ Falha total: ${result.error}`);
-                return res.status(503).json({
-                  error: result.error,
-                  fallbackHistory: result.fallbackHistory,
-                  hint: 'Todas as IAs gratuitas falharam. Tente novamente mais tarde.',
-                });
+              // Build messages array
+              const messages = [];
+              if (systemInstruction) {
+                messages.push({ role: "system", content: systemInstruction });
               }
+              messages.push({ role: "user", content: prompt });
 
-              console.log(`[RotaIA] ✅ Sucesso: ${result.modelUsed} (tentativa #${result.attempt})`);
+              // Call the semantic proxy (port 20129) which routes through master-combo (65 modelos grátis, fallback automático)
+              const proxyResponse = await axios.post(
+                "http://localhost:20129/v1/chat/completions",
+                {
+                  model: "auto",
+                  messages,
+                  max_tokens: maxTokens || 4096,
+                  temperature: temperature ?? 0.7,
+                  response_format: jsonMode ? { type: "json_object" } : undefined,
+                },
+                { timeout: 120000 }
+              );
+
+              const data = proxyResponse.data;
+              const text = data?.choices?.[0]?.message?.content || "";
+              const modelUsed = data?.model || "unknown";
+              const meta = data?.router_metadata || {};
+
+              console.log(`[RotaIA] ✅ Sucesso via 9Router: ${modelUsed} (${meta.task_type || task})`);
 
               return res.json({
-                text: result.text,
-                model: result.modelUsed,
-                provider: result.provider,
-                attempt: result.attempt,
+                text,
+                model: modelUsed,
+                provider: meta.model_selected || modelUsed,
+                taskType: meta.task_type || task,
+                attempt: 1,
                 success: true,
               });
-            } catch (error: any) {
-              console.error(`[RotaIA] Erro crítico:`, error.message);
-              return res.status(500).json({ error: "Erro interno no roteador: " + error.message });
+
+            } catch (error) {
+              const msg = error.response?.data?.error?.message || error.message || "Erro desconhecido";
+              console.error(`[RotaIA] ❌ Falha: ${msg}`);
+              return res.status(503).json({
+                error: msg,
+                hint: 'O 9Router / master-combo falhou. Tente novamente mais tarde.',
+                success: false,
+              });
             }
           });
 
