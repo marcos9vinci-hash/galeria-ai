@@ -4,6 +4,15 @@ export interface User {
   createdAt: Date;
 }
 
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_SUPABASE_URL: string;
+      VITE_SUPABASE_ANON_KEY: string;
+    };
+  }
+}
+
 export interface Niche {
   id: string;
   userId: string;
@@ -14,15 +23,14 @@ export interface Niche {
 export interface Post {
   id: string;
   userId: string;
-  nicheId: string;
+  image: string;
+  caption?: string;
+  date?: Date | string;
   type: 'feed' | 'carousel' | 'reels' | 'story';
-  title: string;
-  caption: string;
-  cta: string;
-  hashtags: string[];
-  scheduledAt: Date;
-  status: 'draft' | 'scheduled' | 'posted';
-  createdAt: Date;
+  status: 'draft' | 'scheduled' | 'posted' | 'rascunho';
+  cta?: string;
+  hashtags?: string[];
+  title?: string;
 }
 
 export interface CarouselSlide {

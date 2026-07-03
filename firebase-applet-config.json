@@ -3,8 +3,8 @@
   "appId": "1:450110977008:web:5f4378abc76a8fbb0d2335",
   "apiKey": "AIzaSyBibKYydlc89VrNEBLuOOAFUFcbLQ9YFdU",
   "authDomain": "filmflow-464be.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-galeriaiatattooc-ce38ece0-6c9b-4ceb-80c9-38b6c3c17de2",
   "storageBucket": "filmflow-464be.firebasestorage.app",
   "messagingSenderId": "450110977008",
-  "measurementId": "G-QHGL7CF210",
-  "firestoreDatabaseId": "(default)"
+  "measurementId": "G-QHGL7CF210"
 }

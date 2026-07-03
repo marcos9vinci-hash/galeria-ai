@@ -1,14 +1,10 @@
-import { signInAnonymously } from 'firebase/auth';
-import { auth } from './firebase';
+import { supabase } from "./supabase";
 
 export async function ensureAnonymousAuth() {
-  try {
-    if (!auth.currentUser) {
-      await signInAnonymously(auth);
-      console.log("Signed in anonymously");
-    }
-  } catch (error) {
-    console.error("Error signing in anonymously", error);
+  const { data, error } = await supabase.auth.signInAnonymously();
+  if (error) {
+    console.error("Auth error:", error);
     throw error;
   }
+  return data.user;
 }

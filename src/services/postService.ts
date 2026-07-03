@@ -1,46 +1,36 @@
-import { db } from "../lib/firebase"; // Assuming standard firebase init
-import { collection, addDoc, getDocs, query, where, Timestamp, doc, updateDoc } from "firebase/firestore";
-
-export interface Post {
-  id?: string;
-  userId: string;
-  imageUrl: string;
-  scheduledAt: Timestamp;
-  status: 'pending' | 'posted';
-  title?: string;
-}
-
-export interface ScheduleSlot {
-  id?: string;
-  userId: string;
-  scheduledAt: Timestamp;
-  status: 'empty' | 'filled';
-}
+import { postRepository } from "@/repositories/postRepository";
+import { postSchema } from "@/validators/post.schema";
 
 export const postService = {
-  async addPost(userId: string, postData: Omit<Post, 'id' | 'userId'>): Promise<string> {
-    const docRef = await addDoc(collection(db, "posts"), {
-      ...postData,
-      userId,
-      createdAt: Timestamp.now(),
-    });
-    return docRef.id;
+  async loadPosts(userId: string, pageSize: number = 10, offset: number = 0) {
+    return await postRepository.getPosts(userId, pageSize, offset);
   },
 
-  async getPosts(userId: string): Promise<Post[]> {
-    const q = query(collection(db, "posts"), where("userId", "==", userId));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+  async savePost(userId: string, p: any) {
+    const postData = {
+      userId: userId,
+      image: p.image,
+      caption: p.caption || '',
+      date: p.date instanceof Date ? p.date.toISOString() : p.date,
+      type: p.type || 'feed',
+      status: p.status || 'rascunho',
+      cta: p.cta || '',
+      hashtags: p.hashtags || [],
+      title: p.title || ''
+    };
+    
+    const validatedData = postSchema.parse(postData);
+    
+    if (p.id && typeof p.id === 'string' && !p.id.startsWith('temp_') && !String(p.id).includes('.')) {
+      await postRepository.updatePost(p.id, validatedData);
+      return p.id;
+    } else {
+      const docRef = await postRepository.addPost(validatedData);
+      return docRef.id;
+    }
   },
 
-  async getAvailableSlots(userId: string): Promise<ScheduleSlot[]> {
-    const q = query(collection(db, "scheduleSlots"), where("userId", "==", userId), where("status", "==", "empty"));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleSlot));
-  },
-
-  async updateSlot(slotId: string, updates: Partial<ScheduleSlot>): Promise<void> {
-    const slotRef = doc(db, "scheduleSlots", slotId);
-    await updateDoc(slotRef, updates);
+  async getAvailableSlots(userId: string) {
+    return [];
   }
 };

@@ -9,7 +9,6 @@ import dotenv from "dotenv";
 import sharp from "sharp";
 import { GoogleGenAI, Type } from "@google/genai";
 import FormData from "form-data";
-import { callWithRota } from "./src/rota-ia.js";
 import * as admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { getNicheConfig, saveNicheConfig, addHashtag, removeHashtag, addProfile, removeProfile, saveScheduleHours } from "./nicheConfig.js";
@@ -187,12 +186,12 @@ async function generateContentWithAi({
   }
 }
 
-const __filename = import.meta.url ? fileURLToPath(import.meta.url) : process.argv[1];
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = 3000;
 
   app.use(cookieParser());
   app.use(express.json({ limit: "50mb" }));
@@ -541,7 +540,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   const getFacebookToken = (req: any): string | undefined => {
-    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN || process.env.FACEBOOK_LONG_TOKEN;
+    return req.cookies.fb_access_token || process.env.FACEBOOK_ACCESS_TOKEN;
   };
 
   const getBufferToken = (req: any): string => {
@@ -602,7 +601,7 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
       "public_profile"
     ].join(",");
 
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&display=popup`;
+    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
     
     res.json({ url: authUrl });
   });
@@ -1454,111 +1453,18 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
         const pollUrl = `https://image.pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
         const imageResp = await axios.get(pollUrl, { responseType: "arraybuffer", timeout: 25000 });
         const base64 = Buffer.from(imageResp.data, "binary").toString("base64");
-                const base64Image = `data:image/png;base64,${base64}`;
-                return res.json({ imageUrl: base64Image });
-              } catch (err: any) {
-                console.log(`[GeminiIA] Redundant channel backup alert: ${err.message}`);
-                return res.status(500).json({ error: "Erro no canal de imagem do Gemini: " + error.message });
-              }
-            }
-          });
+        const base64Image = `data:image/png;base64,${base64}`;
+        return res.json({ imageUrl: base64Image });
+      } catch (err: any) {
+        console.log(`[GeminiIA] Redundant channel backup alert: ${err.message}`);
+        return res.status(500).json({ error: "Erro no canal de imagem do Gemini: " + error.message });
+      }
+    }
+  });
 
-          // ═══════════════════════════════════════════════════════════════
-          // ROTA-IA — Roteador Inteligente de IAs Gratuitas
-          // Ciclo infinito: tenta melhores → fallback automático → nunca paga
-          // ═══════════════════════════════════════════════════════════════
-                    app.post("/api/ai/rota", async (req, res) => {
-            const { task, prompt, systemInstruction, maxTokens, temperature, imageUrl, jsonMode } = req.body;
-
-            if (!task || !prompt) {
-              return res.status(400).json({ error: "Faltam task e/ou prompt" });
-            }
-
-            const VALID_TASKS = ['chat', 'coding', 'creative', 'vision', 'long_context', 'fast', 'reasoning', 'strategy', 'translation', 'summary'];
-            if (!VALID_TASKS.includes(task)) {
-              return res.status(400).json({ 
-                error: `Task inválida. Use: ${VALID_TASKS.join(', ')}`,
-                hint: 'Para imagem use /api/ai/generate-image',
-              });
-            }
-
-            try {
-              console.log(`[RotaIA] 🚦 Roteando via 9Router — task=${task}`);
-
-              // Build messages array
-              const messages = [];
-              if (systemInstruction) {
-                messages.push({ role: "system", content: systemInstruction });
-              }
-              messages.push({ role: "user", content: prompt });
-
-              // Call the semantic proxy (port 20129) which routes through master-combo (65 modelos grátis, fallback automático)
-              const proxyResponse = await axios.post(
-                "http://localhost:20129/v1/chat/completions",
-                {
-                  model: "auto",
-                  messages,
-                  max_tokens: maxTokens || 4096,
-                  temperature: temperature ?? 0.7,
-                  response_format: jsonMode ? { type: "json_object" } : undefined,
-                },
-                { timeout: 120000 }
-              );
-
-              const data = proxyResponse.data;
-              const text = data?.choices?.[0]?.message?.content || "";
-              const modelUsed = data?.model || "unknown";
-              const meta = data?.router_metadata || {};
-
-              console.log(`[RotaIA] ✅ Sucesso via 9Router: ${modelUsed} (${meta.task_type || task})`);
-
-              return res.json({
-                text,
-                model: modelUsed,
-                provider: meta.model_selected || modelUsed,
-                taskType: meta.task_type || task,
-                attempt: 1,
-                success: true,
-              });
-
-            } catch (error) {
-              const msg = error.response?.data?.error?.message || error.message || "Erro desconhecido";
-              console.error(`[RotaIA] ❌ Falha: ${msg}`);
-              return res.status(503).json({
-                error: msg,
-                hint: 'O 9Router / master-combo falhou. Tente novamente mais tarde.',
-                success: false,
-              });
-            }
-          });
-
-          // STATUS — Lista providers e modelos gratuitos disponíveis
-          app.get("/api/ai/providers", (req, res) => {
-            const keys = {
-              openrouter: !!(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'undefined'),
-              gemini: !!((process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) !== 'undefined'),
-              opencode: !!(process.env.OPENCODE_ZEN_API_KEY && process.env.OPENCODE_ZEN_API_KEY !== 'undefined'),
-              cohere: !!(process.env.COHERE_API_KEY && process.env.COHERE_API_KEY !== 'undefined'),
-              groq: !!(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'undefined'),
-            };
-
-            res.json({
-              availableProviders: keys,
-              chains: {
-                chat: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'groq:llama-3.3-70b-versatile', 'gemini:gemini-2.5-flash'],
-                coding: ['opencode:opencode', 'cohere/command-r7b-12-2024', 'qwen-2.5-coder-32b-instruct', 'groq:llama-3.3-70b-versatile'],
-                creative: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'gemini:gemini-2.5-flash'],
-                vision: ['gemini:gemini-2.0-flash', 'anthropic/claude-3-haiku', 'gemini:gemini-2.5-flash'],
-                fast: ['groq:llama-3.1-8b-instant', 'mistral-nemo', 'gemini:gemini-2.5-flash'],
-                reasoning: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'mistralai/mistral-large'],
-                strategy: ['cohere/command-r7b-12-2024', 'llama-3.3-70b-instruct', 'gemini:gemini-2.5-pro'],
-              },
-            });
-          });
-
-          // --- Buffer API Integration ---
-          app.post("/api/buffer/create-idea", async (req, res) => {
-            const { title, text, organizationId } = req.body;
+  // --- Buffer API Integration ---
+  app.post("/api/buffer/create-idea", async (req, res) => {
+    const { title, text, organizationId } = req.body;
     const token = getBufferToken(req);
 
     try {
