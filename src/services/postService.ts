@@ -31,6 +31,50 @@ export const postService = {
   },
 
   async getAvailableSlots(userId: string) {
+    // Load slots from localStorage for immediate access without AI brain planning
+    const savedSlots = localStorage.getItem(`galeria_slots_${userId}`);
+    if (savedSlots) {
+      try {
+        return JSON.parse(savedSlots);
+      } catch (e) {
+        console.warn("Error parsing slots from localStorage:", e);
+      }
+    }
     return [];
-  }
+  },
+
+  async saveSlots(userId: string, slots: any[]) {
+    localStorage.setItem(`galeria_slots_${userId}`, JSON.stringify(slots));
+  },
+
+  async getManualSlotConfig(userId: string) {
+    const saved = localStorage.getItem(`galeria_manual_config_${userId}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.warn("Error parsing manual slot config:", e);
+      }
+    }
+    return null;
+  },
+
+  async saveManualSlotConfig(userId: string, config: any) {
+    localStorage.setItem(`galeria_manual_config_${userId}`, JSON.stringify(config));
+  },
+
+  async loadSlotsAI(userId: string, igId?: string, token?: string) {
+      if (!igId || !token) return null;
+      try {
+        const response = await fetch(`/api/slots/analysis?igId=${igId}`, {
+          headers: { "x-access-token": token }
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+      } catch (error) {
+        console.warn("Análise de slots AI falhou:", error);
+      }
+      return null;
+    }
 };

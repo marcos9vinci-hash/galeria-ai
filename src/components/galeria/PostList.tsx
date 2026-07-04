@@ -2,8 +2,31 @@ import React, { memo } from 'react';
 import { Plus } from 'lucide-react';
 import { format, isToday } from 'date-fns';
 import { PostCard } from './PostCard';
+import { Post } from '@/types';
 
-export const PostList = memo(({ daysInMonth, startingDay, postsByDay, onDrop, setEditorState, draggedPostId, getPostTimeFormatted, statusOptions, onDragStart }) => {
+interface PostListProps {
+  daysInMonth: Date[];
+  startingDay: number;
+  postsByDay: Record<string, Post[]>;
+  onDrop: (e: React.DragEvent, day: Date) => void;
+  setEditorState: (state: { posts: Post[]; index: number }) => void;
+  draggedPostId: string | null;
+  getPostTimeFormatted: (post: Post) => string;
+  statusOptions: { value: string; color: string }[];
+  onDragStart: (e: React.DragEvent, postId: string) => void;
+}
+
+export const PostList = memo(({ 
+  daysInMonth, 
+  startingDay, 
+  postsByDay, 
+  onDrop, 
+  setEditorState, 
+  draggedPostId, 
+  getPostTimeFormatted, 
+  statusOptions, 
+  onDragStart 
+}: PostListProps) => {
   return (
     <div className="grid grid-cols-7 gap-1.5 md:gap-3">
       {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
@@ -30,23 +53,23 @@ export const PostList = memo(({ daysInMonth, startingDay, postsByDay, onDrop, se
             onDrop={(e) => onDrop(e, day)}
           >
             {dayPosts.length > 0 && (
-              <PostCard 
-                dayPosts={dayPosts} 
+              <PostCard
+                dayPosts={dayPosts}
                 onDragStart={onDragStart}
                 onClick={() => { if (dayPosts.length > 0) setEditorState({ posts: dayPosts, index: 0 }); }}
                 getPostTimeFormatted={getPostTimeFormatted}
                 statusOptions={statusOptions}
               />
             )}
-            
+
             {/* Day Number */}
             <span className={`absolute top-2 left-2 z-10 text-[10px] font-bold ${today ? 'text-primary' : 'text-muted-foreground'} ${dayPosts.length > 0 ? 'bg-black/50 text-white px-1.5 py-0.5 rounded-full' : ''}`}>
               {format(day, 'd')}
             </span>
-            
+
             {dayPosts.length === 0 && (
               <div className="flex-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                 <Plus className="w-4 h-4 text-muted-foreground/40" />
+                <Plus className="w-4 h-4 text-muted-foreground/40" />
               </div>
             )}
           </div>

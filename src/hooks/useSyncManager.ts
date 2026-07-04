@@ -19,7 +19,7 @@ export const useSyncManager = () => {
     };
   }, []);
 
-  let state: 'initializing' | 'online' | 'offline' | 'syncing' | 'saving' | 'saved' | 'error' | 'reconnecting' = 'online';
+  let state: 'initializing' | 'online' | 'offline' | 'syncing' | 'saving' | 'saved' | 'error' | 'reconnecting' = 'initializing';
 
   if (!isOnline) {
     state = 'offline';
