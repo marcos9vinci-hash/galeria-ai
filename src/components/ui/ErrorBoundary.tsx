@@ -9,7 +9,8 @@ interface State {
   hasError: boolean;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
+  declare props: Props;
   state: State = { hasError: false };
 
   static getDerivedStateFromError(): State {
@@ -20,7 +21,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  render(): React.ReactNode {
+  render(): ReactNode {
     if (this.state.hasError) {
       return <ErrorAlert message="Ocorreu um erro inesperado na aplicação." />;
     }
