@@ -481,7 +481,12 @@ app.post("/api/instagram/publish", async (req: Request, res: Response) => {
 });
 
 // ===== AI ROTA ENDPOINT (via Router Proxy) =====
-app.post("/api/ai/rota", async (req: Request, res: Response) => {
+// Health check endpoint for Railway
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+app.post("/api/ai/rota", async (req, res) => {
   const { task, prompt, systemInstruction, maxTokens, temperature } = req.body;
 
   if (!prompt) {
