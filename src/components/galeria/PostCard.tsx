@@ -1,23 +1,14 @@
 import React, { memo } from 'react';
 import { Clock } from 'lucide-react';
-import { Post } from '@/types';
 
-interface PostCardProps {
-  dayPosts: Post[];
-  onDragStart: (e: React.DragEvent, postId: string) => void;
-  onClick: () => void;
-  getPostTimeFormatted: (post: Post) => string;
-  statusOptions: { value: string; color: string }[];
-}
-
-export const PostCard = memo(({ dayPosts, onDragStart, onClick, getPostTimeFormatted, statusOptions }: PostCardProps) => {
+export const PostCard = memo(({ dayPosts, onDragStart, onClick, getPostTimeFormatted, statusOptions }) => {
   const post = dayPosts[0];
   const timeFormatted = getPostTimeFormatted(post);
   const statusColor = statusOptions.find(s => s.value === post.status)?.color || 'bg-gray-400';
 
   return (
-    <div
-      draggable
+    <div 
+      draggable 
       onDragStart={(e) => onDragStart(e, post.id)}
       onClick={onClick}
       className="absolute inset-0 cursor-pointer"
