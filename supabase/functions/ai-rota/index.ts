@@ -7,7 +7,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const ROUTER_PROXY_URL = Deno.env.get("ROUTER_PROXY_URL") || "http://localhost:20128";
+const ROUTER_PROXY_URL = Deno.env.get("ROUTER_PROXY_URL") || "https://r8ggzey.abc-tunnel.us/v1";
+
+async function callRouter(url: string, body: any) {
+  const response = await fetch(`${url}/v1/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  return response;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -37,19 +46,29 @@ serve(async (req) => {
     }
     messages.push({ role: "user", content: prompt });
 
-    const response = await fetch(`${ROUTER_PROXY_URL}/v1/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "auto",
-        messages,
-        max_tokens: maxTokens || 4096,
-        temperature: temperature ?? 0.7,
-        stream: false
-      })
-    });
+    const requestBody = {
+      model: "auto",
+      messages,
+      max_tokens: maxTokens || 4096,
+      temperature: temperature ?? 0.7,
+      stream: false
+    };
 
-    const data = await response.json();
+    // Try primary router (tunnel or deployed 9Router)
+    let response = await callRouter(ROUTER_PROXY_URL, requestBody);
+    let data = await response.json();
+
+    if (!response.ok) {
+      console.error(`9Router error (${response.status}):`, data);
+      return new Response(JSON.stringify({ 
+        error: `9Router unavailable: ${data.error?.message || response.statusText}`,
+        hint: "Check ROUTER_PROXY_URL env var - tunnel may be down. Deploy 9Router to Oracle/Fly.io for production."
+      }), { 
+        status: 502, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     const content = data.choices?.[0]?.message?.content || "";
 
     return new Response(JSON.stringify({
