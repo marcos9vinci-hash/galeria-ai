@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
 
-const ROUTER_PROXY_URL = process.env.ROUTER_PROXY_URL || "http://localhost:20129";
+const ROUTER_PROXY_URL = process.env.ROUTER_PROXY_URL || "http://localhost:20128";
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
