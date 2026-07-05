@@ -17,6 +17,11 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Health check endpoint for Railway - MUST be before static middleware
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
 // Serve static files from dist directory
 app.use(express.static(path.join(projectRoot, "dist")));
 
@@ -478,12 +483,6 @@ app.post("/api/instagram/publish", async (req: Request, res: Response) => {
       error: error.response?.data?.error?.message || error.message 
     });
   }
-});
-
-// ===== AI ROTA ENDPOINT (via Router Proxy) =====
-// Health check endpoint for Railway
-app.get("/api/health", (req, res) => {
-  res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
 app.post("/api/ai/rota", async (req, res) => {
