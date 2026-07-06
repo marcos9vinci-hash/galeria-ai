@@ -427,7 +427,14 @@ export default function GaleriaIA() {
       // Auto-schedule each post based on active integration channels
       const scheduledItems = await Promise.all(newItems.map(item => schedulePostIntegrations(item)));
 
-      savePosts([...currentPosts, ...scheduledItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      const allItems = [...currentPosts, ...scheduledItems].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setPosts(allItems);
+      // Persist one by one off the critical path
+      setTimeout(() => {
+        for (const item of allItems) {
+          savePosts(item);
+        }
+      }, 100);
     } catch (error: any) {
       console.error("Critical error in AI planning:", error);
       alert(error?.message || "Ocorreu um erro ao planejar sua estratégia. Verifique sua conexão.");
