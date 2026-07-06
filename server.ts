@@ -2166,13 +2166,13 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
 
   return app;
 }
-export let app: express.Application;
-
-const server = startServer();
-app = await server;
 
 // Run locally when not on Netlify
 if (!process.env.NETLIFY) {
-  startServer();
+  createApp().then(app => {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  });
 }
 

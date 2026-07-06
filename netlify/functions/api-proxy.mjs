@@ -1,7 +1,9 @@
 import axios from "axios";
 
 export const handler = async (event) => {
-  const path = event.path.replace(/^\/\.netlify\/functions\/api-proxy/, "");
+  const rawPath = event.path.replace(/^\/\.netlify\/functions\/api-proxy/, "");
+  // Support both /api/* and direct /* paths
+  const path = rawPath.startsWith("/api") ? rawPath : "/api" + rawPath;
   const method = event.httpMethod;
   const headers = event.headers || {};
   const body = event.body ? JSON.parse(event.body) : {};
