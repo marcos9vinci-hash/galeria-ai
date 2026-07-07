@@ -4,7 +4,13 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/:splat"
+  to = "/.netlify/functions/api-proxy/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/debug/env"
+  to = "/.netlify/functions/debug-env"
   status = 200
   force = true
 
