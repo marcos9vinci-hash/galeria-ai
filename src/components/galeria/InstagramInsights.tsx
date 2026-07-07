@@ -35,7 +35,7 @@ export default function InstagramInsights({ igId }: InstagramInsightsProps) {
     if (!igId) return;
     setLoading(true);
     try {
-      const resp = await fetch(`/api/instagram/insights?igId=${igId}`);
+      const resp = await fetch(`https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/instagram/insights?igId=${igId}`);
       if (resp.ok) {
         const insights = await resp.json();
         setData(insights);

@@ -16,7 +16,7 @@ export const base44 = {
       },
       InvokeLLM: async ({ prompt, file_urls, response_json_schema }: any) => {
         try {
-          const res = await fetch("/api/llm/invoke", {
+          const res = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/llm/invoke", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

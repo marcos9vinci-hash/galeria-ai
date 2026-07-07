@@ -61,7 +61,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
     setManualIgSuccess(null);
     setError(null);
     try {
-      const response = await fetch("/api/auth/facebook/manual-token", {
+      const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/auth/facebook/manual-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: manualIgToken })
@@ -83,7 +83,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
 
   const fetchAccounts = async () => {
     try {
-      const resp = await fetch("/api/instagram/me");
+      const resp = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/instagram/me");
       if (resp.ok) {
         const data = await resp.json();
         const foundAccounts = data.accounts || [];
@@ -148,7 +148,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/auth/facebook/url");
+      const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/auth/facebook/url");
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.error || "Falha ao obter URL de autenticação. Verifique se o FACEBOOK_APP_ID está configurado nas variáveis de ambiente.");

@@ -27,7 +27,7 @@ export default function EstudioIAWorkflow({ open, onClose, igId, profileInfo, on
 
   useEffect(() => {
     if (open && profileInfo?.username) {
-      fetch(`/api/niche/config?igUsername=${profileInfo.username}`)
+      fetch(`https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/niche/config?igUsername=${profileInfo.username}`)
         .then(res => res.json())
         .then(data => {
           if (data && !data.error) {

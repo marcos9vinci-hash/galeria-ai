@@ -4,7 +4,7 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: process.env.BASE_URL || '/',
+  base: '/galeria-ai/',
   plugins: [
     react(),
     VitePWA({
