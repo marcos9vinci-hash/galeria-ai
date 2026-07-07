@@ -57,7 +57,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/wrybqqitsylqyhgzodyc\.supabase\.co\/rest\/v1\/.*/,
@@ -66,20 +66,9 @@ export default defineConfig({
               cacheName: 'supabase-api',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                maxAgeSeconds: 60 * 60 * 24,
               },
               networkTimeoutSeconds: 10,
-              plugins: [
-                {
-                  cacheWillUpdate: async ({ response }) => {
-                    // Only cache successful responses
-                    if (response.status === 200) {
-                      return response;
-                    }
-                    return null;
-                  },
-                },
-              ],
             },
           },
           {
@@ -89,7 +78,7 @@ export default defineConfig({
               cacheName: 'supabase-functions',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60, // 1 hour
+                maxAgeSeconds: 60 * 60,
               },
               networkTimeoutSeconds: 15,
             },
@@ -101,7 +90,7 @@ export default defineConfig({
               cacheName: 'buffer-api',
               expiration: {
                 maxEntries: 20,
-                maxAgeSeconds: 60 * 60, // 1 hour
+                maxAgeSeconds: 60 * 60,
               },
               networkTimeoutSeconds: 10,
             },
@@ -113,7 +102,7 @@ export default defineConfig({
               cacheName: 'facebook-api',
               expiration: {
                 maxEntries: 20,
-                maxAgeSeconds: 60 * 60, // 1 hour
+                maxAgeSeconds: 60 * 60,
               },
               networkTimeoutSeconds: 10,
             },
@@ -125,7 +114,7 @@ export default defineConfig({
               cacheName: 'images',
               expiration: {
                 maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
             },
           },
@@ -143,7 +132,7 @@ export default defineConfig({
               cacheName: 'google-fonts-webfonts',
               expiration: {
                 maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
             },
           },
@@ -169,12 +158,6 @@ export default defineConfig({
           'vendor-data': ['@tanstack/react-query', 'axios', 'zustand', 'date-fns'],
           'vendor-supabase': ['@supabase/supabase-js', '@supabase/realtime-js'],
           'vendor-google': ['@google/generative-ai'],
-          'galeria-components': [
-            './src/components/calendar/CalendarView.tsx',
-            './src/components/upload/UploadZone.tsx',
-            './src/components/posts/PostCard.tsx',
-            './src/components/sidebar/Sidebar.tsx',
-          ],
         },
       },
     },
