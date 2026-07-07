@@ -1,33 +1,17 @@
 import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 
-const SUPABASE_URL = "https://wrybqqitsylqyhgzodyc.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
 const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
-  const url = `${SUPABASE_URL}/functions/v1/health`;
-  
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  
-  if (SUPABASE_SERVICE_ROLE_KEY) {
-    headers["Authorization"] = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
-  }
-  
-  const response = await fetch(url, {
-    method: "GET",
-    headers,
-  });
-  
-  const responseHeaders: Record<string, string> = {};
-  response.headers.forEach((value, key) => {
-    responseHeaders[key] = value;
-  });
-  
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return {
-    statusCode: response.status,
-    headers: responseHeaders,
-    body: await response.text(),
+    statusCode: 200,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      hasKey: !!key,
+      keyLength: key?.length,
+      keyStart: key?.substring(0, 50),
+      keyEnd: key?.substring(Math.max(0, (key?.length || 0) - 50)),
+      fullKey: key
+    }),
   };
 };
 
