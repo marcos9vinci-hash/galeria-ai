@@ -4,8 +4,8 @@ const SUPABASE_URL = "https://wrybqqitsylqyhgzodyc.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
-  const path = event.path.replace(/^\/\.netlify\/functions\/api-proxy/, "").replace(/^\/api/, "");
-  const url = `${SUPABASE_URL}/functions/v1/api${path}${event.rawQuery ? `?${event.rawQuery}` : ""}`;
+  const path = event.path.replace(/^\/.*netlify\/functions\/api-proxy/, "").replace(/^\/api/, "");
+  const url = `${SUPABASE_URL}/functions/v1/health${path}${event.rawQuery ? `?${event.rawQuery}` : ""}`;
   
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
