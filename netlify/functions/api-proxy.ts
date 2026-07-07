@@ -25,7 +25,7 @@ const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) =
   const response = await fetch(url, {
     method: event.httpMethod,
     headers,
-    body: event.body,
+    body: ["GET", "HEAD"].includes(event.httpMethod) ? undefined : event.body,
   });
   
   const responseHeaders: Record<string, string> = {};
