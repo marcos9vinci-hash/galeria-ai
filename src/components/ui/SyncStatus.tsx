@@ -1,26 +1,41 @@
-import React from 'react';
 import { useSyncManager } from '@/hooks/useSyncManager';
-import { Loader2, CheckCircle, CloudOff, AlertCircle, RefreshCw } from 'lucide-react';
+
+type SyncState = 'initializing' | 'online' | 'offline' | 'syncing' | 'saving' | 'saved' | 'error' | 'reconnecting';
 
 export const SyncStatus = () => {
-  const { state } = useSyncManager();
+  const { state, isOnline } = useSyncManager();
 
-  switch (state) {
-    case 'offline':
-      return <div className="flex items-center gap-1 text-xs text-red-600"><CloudOff className="w-3 h-3"/> Offline</div>;
-    case 'saving':
-      return <div className="flex items-center gap-1 text-xs text-amber-600"><Loader2 className="w-3 h-3 animate-spin"/> Salvando...</div>;
-    case 'syncing':
-      return <div className="flex items-center gap-1 text-xs text-blue-600"><Loader2 className="w-3 h-3 animate-spin"/> Sincronizando...</div>;
-    case 'reconnecting':
-      return <div className="flex items-center gap-1 text-xs text-amber-600"><RefreshCw className="w-3 h-3 animate-spin"/> Reconectando...</div>;
-    case 'error':
-      return <div className="flex items-center gap-1 text-xs text-red-600"><AlertCircle className="w-3 h-3"/> Erro</div>;
-    case 'saved':
-    case 'initializing':
-    case 'online':
-    default:
-      return <div className="flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3"/> Salvo</div>;
-  }
+  const getStatusConfig = (state: SyncState) => {
+    switch (state) {
+      case 'offline':
+        return { label: 'Offline', color: 'text-red-500', bg: 'bg-red-500/20' };
+      case 'saving':
+        return { label: 'Salvando...', color: 'text-yellow-500', bg: 'bg-yellow-500/20' };
+      case 'syncing':
+        return { label: 'Sincronizando...', color: 'text-blue-500', bg: 'bg-blue-500/20' };
+      case 'saved':
+        return { label: 'Salvo', color: 'text-green-500', bg: 'bg-green-500/20' };
+      case 'error':
+        return { label: 'Erro', color: 'text-red-500', bg: 'bg-red-500/20' };
+      case 'reconnecting':
+        return { label: 'Reconectando...', color: 'text-orange-500', bg: 'bg-orange-500/20' };
+      case 'initializing':
+        return { label: 'Iniciando...', color: 'text-gray-500', bg: 'bg-gray-500/20' };
+      case 'online':
+      default:
+        return { label: isOnline ? 'Online' : 'Offline', color: 'text-green-500', bg: 'bg-green-500/20' };
+    }
+  };
+
+  const config = getStatusConfig(state);
+
+  return (
+    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color}`}>
+      <span className="relative flex h-1.5 w-1.5">
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${config.bg} opacity-75`} />
+        <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${config.color}`} />
+      </span>
+      {config.label}
+    </div>
+  );
 };
-

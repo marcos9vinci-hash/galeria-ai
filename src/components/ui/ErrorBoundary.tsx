@@ -10,21 +10,21 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  public state: State = { hasError: false };
+  state: State = { hasError: false };
 
-  public static getDerivedStateFromError(_: Error): State {
+  static getDerivedStateFromError(): State {
     return { hasError: true };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  public render() {
+  render() {
+    const { children } = this.props as Props;
     if (this.state.hasError) {
       return <ErrorAlert message="Ocorreu um erro inesperado na aplicação." />;
     }
-
-    return (this.props as any).children;
+    return children;
   }
 }

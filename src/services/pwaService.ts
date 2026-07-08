@@ -1,4 +1,4 @@
-import { registerSW } from 'virtual:pwa-register/react';
+import { registerSW } from './pwa-shim';
 
 export function usePWA() {
   const { needRefresh, offlineReady, updateServiceWorker } = registerSW({

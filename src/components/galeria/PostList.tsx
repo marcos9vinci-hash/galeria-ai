@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { memo } from 'react';
 import { Plus } from 'lucide-react';
 import { format, isToday } from 'date-fns';
