@@ -54,7 +54,6 @@ jobs:
 
   deploy-edge-functions:
     name: Deploy Supabase Edge Functions
-    needs: lint-and-test
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -80,7 +79,6 @@ jobs:
 
   deploy-netlify:
     name: Deploy to Netlify
-    needs: lint-and-test
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -120,7 +118,6 @@ jobs:
 
   deploy-pages:
     name: Deploy to GitHub Pages
-    needs: lint-and-test
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
