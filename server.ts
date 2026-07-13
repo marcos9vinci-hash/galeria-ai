@@ -580,6 +580,28 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
     res.json({ success: true, message: "Token do Buffer salvo no navegador com sucesso!" });
   });
 
+  app.post("/api/instagram/login-manual", async (req, res) => {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: "Token não fornecido." });
+    }
+
+    try {
+      const resp = await axios.get("https://graph.facebook.com/v21.0/me", {
+        params: { access_token: token.trim() }
+      });
+      console.log(`[Instagram] Token manual validado — ${resp.data.name}`);
+    } catch (e: any) {
+      return res.status(400).json({ error: "Token inválido", detail: e.response?.data?.error?.message || e.message });
+    }
+
+    res.cookie("fb_access_token", token.trim(), {
+      httpOnly: true, secure: true, sameSite: "none",
+      maxAge: 180 * 24 * 60 * 60 * 1000
+    });
+    res.json({ success: true, message: "Token do Instagram salvo!" });
+  });
+
   // 1. Get Facebook Auth URL
   app.get("/api/auth/facebook/url", (req, res) => {
     const appId = process.env.FACEBOOK_APP_ID;
@@ -1604,34 +1626,36 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
     }
   });
 
+  // Resolve Buffer organization ID (cached)
+  let _bufferOrgId: string | null = null;
+  async function resolveBufferOrgId(token: string): Promise<string> {
+    if (_bufferOrgId) return _bufferOrgId;
+    const resp = await axios.post("https://api.buffer.com/graphql",
+      { query: `{ account { organizations { id } } }` },
+      { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } }
+    );
+    const orgs = resp.data?.data?.account?.organizations || [];
+    _bufferOrgId = orgs[0]?.id || null;
+    if (!_bufferOrgId) throw new Error("No Buffer organization found");
+    return _bufferOrgId;
+  }
+
   app.get("/api/buffer/posts/:profileId", async (req, res) => {
     const { profileId } = req.params;
     const token = getBufferToken(req);
     
     try {
+      const orgId = await resolveBufferOrgId(token);
       const query = `
-        query GetQueuedPosts($channelId: ID!) {
-          node(id: $channelId) {
-            ... on Channel {
-              id
-              name
-              service
-              posts(state: QUEUED, count: 20) {
-                totalCount
-                nodes {
-                  id
-                  text
-                  dueAt
-                  state
-                  content {
-                    text
-                    assets {
-                      image {
-                        url
-                      }
-                    }
-                  }
-                }
+        query GetPosts($input: PostsInput!, $first: Int) {
+          posts(input: $input, first: $first) {
+            edges {
+              node {
+                id
+                status
+                text
+                dueAt
+                channelId
               }
             }
           }
@@ -1639,7 +1663,13 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
       `;
       const response = await axios.post("https://api.buffer.com/graphql", { 
         query,
-        variables: { channelId: profileId }
+        variables: { 
+          input: {
+            organizationId: orgId,
+            filter: { channelIds: [profileId], status: ["draft", "scheduled"] }
+          },
+          first: 20
+        }
       }, {
         headers: { 
           "Authorization": `Bearer ${token}`, 
@@ -1696,21 +1726,22 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
     
     try {
       const query = `
-        query GetPostingSchedules($channelId: ID!) {
-          node(id: $channelId) {
-            ... on Channel {
-              id
-              postingSchedules {
-                days
-                times
-              }
+        query GetChannelSchedule($input: ChannelInput!) {
+          channel(input: $input) {
+            id
+            name
+            service
+            postingSchedule {
+              day
+              times
+              paused
             }
           }
         }
       `;
       const response = await axios.post("https://api.buffer.com/graphql", { 
         query,
-        variables: { channelId: profileId }
+        variables: { input: { id: profileId } }
       }, {
         headers: { 
           "Authorization": `Bearer ${token}`, 
@@ -1725,47 +1756,12 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
   });
 
   app.post("/api/buffer/schedule-update", async (req, res) => {
-    const { profileId, schedules } = req.body;
-    const token = getBufferToken(req);
-    
-    try {
-      const query = `
-        mutation UpdatePostingSchedules($input: UpdatePostingSchedulesInput!) {
-          updatePostingSchedules(input: $input) {
-            ... on UpdatePostingSchedulesSuccess {
-              channel {
-                id
-                postingSchedules {
-                  days
-                  times
-                }
-              }
-            }
-            ... on MutationError {
-              message
-            }
-          }
-        }
-      `;
-      const response = await axios.post("https://api.buffer.com/graphql", { 
-        query,
-        variables: { 
-          input: {
-            channelId: profileId,
-            schedules: schedules // expects array of { days: [], times: [] }
-          }
-        }
-      }, {
-        headers: { 
-          "Authorization": `Bearer ${token}`, 
-          "Content-Type": "application/json" 
-        }
-      });
-      
-      res.json(response.data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.response?.data || error.message });
-    }
+    // Mutation updatePostingSchedules was removed from the Buffer GraphQL API.
+    res.status(501).json({ 
+      error: "A API do Buffer não expõe mais gerenciamento de horários via GraphQL. " +
+             "Acesse buffer.com para ajustar os horários de postagem.",
+      hint: "manage_schedules_in_buffer_web"
+    });
   });
 
   // --- ESTÚDIO IA: ORQUESTRADOR DE ESTRATÉGIA ---
