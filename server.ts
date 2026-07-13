@@ -2158,7 +2158,10 @@ const SCHEDULED_POSTS_PATH = path.join(process.cwd(), "scheduled-posts.json");
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    // Serve static files at root AND at /galeria-ai/ prefix
+    // (GitHub Pages base path compatibility)
     app.use(express.static(distPath));
+    app.use("/galeria-ai", express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
