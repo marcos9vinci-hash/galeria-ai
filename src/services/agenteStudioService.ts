@@ -30,7 +30,7 @@ export class AgenteStudioService {
 
     try {
       // --- AGENTE 0: ANALISADOR DE INSIGHTS PRÓPRIOS ---
-      const insightsResp = await fetch(`https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/instagram/insights?igId=${igId}`);
+      const insightsResp = await fetch(`https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/insights?igId=${igId}`);
       const myData = await insightsResp.json();
       
       const agente0 = await base44.integrations.Core.InvokeLLM({

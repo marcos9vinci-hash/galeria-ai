@@ -42,7 +42,7 @@ export default function NicheConfig({ igUsername, igId, onClose }: NicheConfigPr
 
     try {
       setActionLoading(true);
-      const resp = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/niche/schedule-preferences", {
+      const resp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/niche/schedule-preferences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -69,7 +69,7 @@ export default function NicheConfig({ igUsername, igId, onClose }: NicheConfigPr
   const fetchConfig = async () => {
     try {
       setLoading(true);
-      const resp = await fetch(`https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/niche/config?igUsername=${igUsername}`);
+      const resp = await fetch(`https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/niche/config?igUsername=${igUsername}`);
       if (resp.ok) {
         const data = await resp.json();
         setConfig(data);
@@ -87,7 +87,7 @@ export default function NicheConfig({ igUsername, igId, onClose }: NicheConfigPr
   const handleDetect = async (force: boolean = false) => {
     try {
       setDetecting(true);
-      const resp = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/niche/detect", {
+      const resp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/niche/detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ igId, igUsername, force })
@@ -107,7 +107,7 @@ export default function NicheConfig({ igUsername, igId, onClose }: NicheConfigPr
     if (action === "add" && !targetTag.trim()) return;
     try {
       setActionLoading(true);
-      const resp = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/niche/hashtags", {
+      const resp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/niche/hashtags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,7 +132,7 @@ export default function NicheConfig({ igUsername, igId, onClose }: NicheConfigPr
     if (action === "add" && !targetProfile.trim()) return;
     try {
       setActionLoading(true);
-      const resp = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/niche/profiles", {
+      const resp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/niche/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

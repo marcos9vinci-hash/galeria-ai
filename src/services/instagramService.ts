@@ -1,6 +1,6 @@
 export const instagramService = {
   async getAccountInfo() {
-    const resp = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/instagram/me");
+    const resp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/me");
     if (!resp.ok) return null;
     const data = await resp.json();
     if (data.accounts?.length > 0) {
