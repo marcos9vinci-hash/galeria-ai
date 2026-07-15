@@ -35,7 +35,7 @@ export default function InstagramInsights({ igId }: InstagramInsightsProps) {
     if (!igId) return;
     setLoading(true);
     try {
-      const resp = await fetch(`https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/insights?igId=${igId}`);
+      const resp = await fetch(`https://galeria-ia-production.up.railway.app/api/instagram/insights?igId=${igId}`);
       if (resp.ok) {
         const insights = await resp.json();
         setData(insights);

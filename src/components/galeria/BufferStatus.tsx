@@ -12,7 +12,7 @@ export function BufferStatus() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/profiles");
+      const response = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/profiles");
       const data = await response.json();
       if (data.data?.profiles && Array.isArray(data.data.profiles)) {
         setProfiles(data.data.profiles);

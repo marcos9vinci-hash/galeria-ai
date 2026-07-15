@@ -27,7 +27,7 @@ export default function EstudioIAWorkflow({ open, onClose, igId, profileInfo, on
 
   useEffect(() => {
     if (open && profileInfo?.username) {
-      fetch(`https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/niche/config?igUsername=${profileInfo.username}`)
+      fetch(`https://galeria-ia-production.up.railway.app/api/niche/config?igUsername=${profileInfo.username}`)
         .then(res => res.json())
         .then(data => {
           if (data && !data.error) {

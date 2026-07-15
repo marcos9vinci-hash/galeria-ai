@@ -151,7 +151,7 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
 
   const fetchScheduleTimes = async (profileId: string) => {
     try {
-      const response = await fetch(`https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/schedule/${profileId}`);
+      const response = await fetch(`https://galeria-ia-production.up.railway.app/api/buffer/schedule/${profileId}`);
       const data = await response.json();
       if (data.data?.node?.postingSchedules) {
         // Flatten all times from all schedule groups
@@ -170,8 +170,8 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
   const fetchIntegrations = async () => {
     try {
       const [igResp, bufferResp] = await Promise.all([
-        fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/me"),
-        fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/profiles")
+        fetch("https://galeria-ia-production.up.railway.app/api/instagram/me"),
+        fetch("https://galeria-ia-production.up.railway.app/api/buffer/profiles")
       ]);
       
       if (igResp.ok) {
@@ -226,7 +226,7 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
     try {
       const scheduledAt = isScheduled ? activePost.scheduledAt : null;
       
-      const response = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/publish", {
+      const response = await fetch("https://galeria-ia-production.up.railway.app/api/instagram/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -289,7 +289,7 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
 
       const selectedProfile = bufferProfiles.find(p => p.id === selectedBufferProfile);
 
-      const response = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/create-update", {
+      const response = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/schedule-update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

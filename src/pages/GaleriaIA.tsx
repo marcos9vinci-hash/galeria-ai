@@ -96,17 +96,23 @@ export default function GaleriaIA() {
     // We need to find the connected buffer profile first
     try {
       setLoadingBuffer(true);
-      const profilesResp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/profiles");
+      const profilesResp = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/profiles");
       const profilesData = await profilesResp.json();
       const profiles = profilesData.data?.profiles || [];
       
       if (profiles.length > 0) {
         // Fetch queue for each profile (or just the first one for now)
         const postsPromises = profiles.map((p: any) => 
-          fetch(`https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/posts/${p.id}`).then(res => res.json())
+          fetch(`https://galeria-ia-production.up.railway.app/api/buffer/posts/${p.id}`).then(res => res.json())
         );
         const results = await Promise.all(postsPromises);
-        const allBufferPosts = results.flatMap(r => r.data?.node?.posts?.nodes || []);
+        const allBufferPosts = results.flatMap(r => {
+          // Novas respostas usam data.posts.edges[].node
+          const edges = r.data?.posts?.edges;
+          if (edges) return edges.map((e: any) => e.node);
+          // Fallback para formato antigo
+          return r.data?.node?.posts?.nodes || [];
+        });
         setBufferPosts(allBufferPosts.sort((a, b) => {
           const dateA = new Date(a.scheduledAt || a.dueAt || 0).getTime();
           const dateB = new Date(b.scheduledAt || b.dueAt || 0).getTime();
@@ -124,7 +130,7 @@ export default function GaleriaIA() {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const resp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/me");
+        const resp = await fetch("https://galeria-ia-production.up.railway.app/api/instagram/me");
         if (resp.ok) {
           const data = await resp.json();
           if (data.accounts?.length > 0) {
@@ -171,7 +177,7 @@ export default function GaleriaIA() {
 
   const syncWithServerScheduler = async (currentPosts: any[]) => {
     try {
-      const resp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/scheduled-status");
+      const resp = await fetch("https://galeria-ia-production.up.railway.app/api/instagram/scheduled-status");
       if (!resp.ok) return;
       const data = await resp.json();
       const serverPosts = data.posts || [];
@@ -277,7 +283,7 @@ export default function GaleriaIA() {
   const schedulePostIntegrations = async (post: any) => {
     try {
       // 1. Tenta agendar no Buffer primeiro se houver canais ativos
-      const profilesResp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/profiles");
+      const profilesResp = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/profiles");
       if (profilesResp.ok) {
         const profilesData = await profilesResp.json();
         const profiles = profilesData.data?.profiles || [];
@@ -287,7 +293,7 @@ export default function GaleriaIA() {
           const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
           const scheduledIso = post.scheduledTime || post.date;
           
-          const response = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/buffer/create-update", {
+          const response = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/schedule-update", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -317,7 +323,7 @@ export default function GaleriaIA() {
         const text = `${post.caption || ''}\n\n${post.cta || ''}\n\n${(post.hashtags || []).join(' ')}`;
         const scheduledIso = post.scheduledTime || post.date;
         
-        const response = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/publish", {
+        const response = await fetch("https://galeria-ia-production.up.railway.app/api/instagram/publish", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -361,7 +367,7 @@ export default function GaleriaIA() {
       // 2. Fetch Fresh Insights for the AI
       let insightsData = null;
       try {
-        const resp = await fetch(`https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/instagram/insights?igId=${profileInfo?.igId}`);
+        const resp = await fetch(`https://galeria-ia-production.up.railway.app/api/instagram/insights?igId=${profileInfo?.igId}`);
         if (resp.ok) insightsData = await resp.json();
       } catch (e) {
         console.warn("Could not fetch insights for strategy, using defaults.");
@@ -372,7 +378,7 @@ export default function GaleriaIA() {
       const availableSlots = await postService.getAvailableSlots(user.id);
 
       // 3. Call AI Strategy Orchestrator
-      const strategyResp = await fetch("https://galeria-ia-proxy.4f842090ed958ee94e2d24ee609292ae.workers.dev/studio/plan-strategy", {
+      const strategyResp = await fetch("https://galeria-ia-production.up.railway.app/api/studio/plan-strategy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
