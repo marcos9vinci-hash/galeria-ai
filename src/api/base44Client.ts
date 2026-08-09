@@ -1,5 +1,7 @@
 // Bridge component to simulate the base44 SDK used in the original snippets
 // but proxies call to the backend to protect GEMINI_API_KEY.
+const SUPABASE_FUNCTIONS_URL = 'https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1';
+
 export const base44 = {
   integrations: {
     Core: {
@@ -16,7 +18,7 @@ export const base44 = {
       },
       InvokeLLM: async ({ prompt, file_urls, response_json_schema }: any) => {
         try {
-          const res = await fetch("https://galeria-ia-production.up.railway.app/api/llm/invoke", {
+          const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/api/llm/invoke`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

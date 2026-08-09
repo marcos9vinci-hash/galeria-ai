@@ -20,7 +20,7 @@ export class GeminiService {
     systemInstruction?: string;
   } = {}) {
     try {
-      const response = await axios.post("https://galeria-ia-production.up.railway.app/api/ai/generate-image", {
+      const response = await axios.post("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/ai/generate-image", {
         prompt,
         aspectRatio: config.aspectRatio || "1:1",
         systemInstruction: config.systemInstruction
@@ -42,7 +42,7 @@ export class GeminiService {
    */
   async syncGemWithAirtop(gemUrl: string) {
     try {
-      const response = await axios.post("https://galeria-ia-production.up.railway.app/api/airtop/scrape-gem", { gemUrl });
+      const response = await axios.post("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/airtop/scrape-gem", { gemUrl });
       if (response.data.instructions) {
         return response.data.instructions;
       }
@@ -59,7 +59,7 @@ export class GeminiService {
    */
   async generateTattooWithAirtop(prompt: string, gemUrl: string) {
     try {
-      const response = await axios.post("https://galeria-ia-production.up.railway.app/api/airtop/generate-tattoo", { prompt, gemUrl });
+      const response = await axios.post("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/airtop/generate-tattoo", { prompt, gemUrl });
       if (response.data.imageUrl) {
         return response.data.imageUrl;
       }

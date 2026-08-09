@@ -29,63 +29,63 @@ export default function BufferScheduleManager() {
   const [manualBufferSuccess, setManualBufferSuccess] = useState<string | null>(null);
 
   const handleSaveManualBufferToken = async () => {
-    if (!manualBufferToken) return;
-    setSavingManualBuffer(true);
-    setManualBufferSuccess(null);
-    try {
-      const response = await fetch("https://galeria-ia-production.up.railway.app/api/auth/buffer/manual-token", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: manualBufferToken })
-      });
-      const data = await response.json();
-      if (data.success) {
-        setManualBufferSuccess('Token do Buffer atualizado com sucesso!');
-        setManualBufferToken('');
-        setError(null);
-        fetchProfiles(); // reload profiles
-      } else {
-        setError(data.error || 'Erro ao salvar token');
+      if (!manualBufferToken) return;
+      setSavingManualBuffer(true);
+      setManualBufferSuccess(null);
+      try {
+        const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/auth/buffer/manual-token", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: manualBufferToken })
+        });
+        const data = await response.json();
+        if (data.success) {
+          setManualBufferSuccess('Token do Buffer atualizado com sucesso!');
+          setManualBufferToken('');
+          setError(null);
+          fetchProfiles(); // reload profiles
+        } else {
+          setError(data.error || 'Erro ao salvar token');
+        }
+      } catch (err: any) {
+        setError('Erro ao salvar token: ' + err.message);
+      } finally {
+        setSavingManualBuffer(false);
       }
-    } catch (err: any) {
-      setError('Erro ao salvar token: ' + err.message);
-    } finally {
-      setSavingManualBuffer(false);
-    }
-  };
+    };
 
-  const fetchProfiles = async () => {
-    try {
-      const response = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/profiles");
-      const data = await response.json();
-      const channels = data.data?.profiles || data.data?.account?.organizations?.flatMap((org: any) => org.channels || []) || [];
-      setProfiles(channels);
-      if (channels.length > 0 && !selectedProfileId) {
-        setSelectedProfileId(channels[0].id);
+    const fetchProfiles = async () => {
+      try {
+        const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/buffer/profiles");
+        const data = await response.json();
+        const channels = data.data?.profiles || data.data?.account?.organizations?.flatMap((org: any) => org.channels || []) || [];
+        setProfiles(channels);
+        if (channels.length > 0 && !selectedProfileId) {
+          setSelectedProfileId(channels[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch Buffer profiles', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch Buffer profiles', err);
-    }
-  };
+    };
 
-  const fetchSchedule = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const response = await fetch(`https://galeria-ia-production.up.railway.app/api/buffer/schedule/${id}`);
-      const data = await response.json();
-      if (data.data?.node?.postingSchedules) {
-        setSchedules(data.data.node.postingSchedules);
-      } else {
-        setSchedules([]);
+    const fetchSchedule = async (id: string) => {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+      try {
+        const response = await fetch(`https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/buffer/schedule/${id}`);
+        const data = await response.json();
+        if (data.data?.node?.postingSchedules) {
+          setSchedules(data.data.node.postingSchedules);
+        } else {
+          setSchedules([]);
+        }
+      } catch (err: any) {
+        setError('Erro ao carregar horários: ' + err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError('Erro ao carregar horários: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   useEffect(() => {
     fetchProfiles();
@@ -135,33 +135,33 @@ export default function BufferScheduleManager() {
   };
 
   const handleSave = async () => {
-    if (!selectedProfileId) return;
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const response = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/schedule-update", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profileId: selectedProfileId,
-          schedules: schedules
-        })
-      });
-      const data = await response.json();
-      if (data.data?.updatePostingSchedules?.channel) {
-        setSuccess('Horários de postagem atualizados!');
-      } else if (data.data?.updatePostingSchedules?.message) {
-        setError(data.data.updatePostingSchedules.message);
-      } else if (data.errors) {
-        setError(data.errors[0].message);
+      if (!selectedProfileId) return;
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+      try {
+        const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/buffer/schedule-update", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            profileId: selectedProfileId,
+            schedules: schedules
+          })
+        });
+        const data = await response.json();
+        if (data.data?.updatePostingSchedules?.channel) {
+          setSuccess('Horários de postagem atualizados!');
+        } else if (data.data?.updatePostingSchedules?.message) {
+          setError(data.data.updatePostingSchedules.message);
+        } else if (data.errors) {
+          setError(data.errors[0].message);
+        }
+      } catch (err: any) {
+        setError('Erro ao salvar: ' + err.message);
+      } finally {
+        setSaving(false);
       }
-    } catch (err: any) {
-      setError('Erro ao salvar: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
+    };
 
   return (
     <Card className="border-border bg-card shadow-lg">

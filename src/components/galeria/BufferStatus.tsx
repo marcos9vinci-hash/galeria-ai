@@ -12,7 +12,7 @@ export function BufferStatus() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("https://galeria-ia-production.up.railway.app/api/buffer/profiles");
+      const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/buffer/profiles");
       const data = await response.json();
       if (data.data?.profiles && Array.isArray(data.data.profiles)) {
         setProfiles(data.data.profiles);

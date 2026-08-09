@@ -1,0 +1,8 @@
+name = "galeria-ia"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
+
+[vars]
+VITE_SUPABASE_URL = "https://wrybqqitsylqyhgzodyc.supabase.co"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyeWJxcWl0c3lscXloZ3pvZHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDA3MjEsImV4cCI6MjA5ODYxNjcyMX0.2-qH7NsPQrDn-8sn16mepAkYdQB5XsxMs5jFve2ejQg"
+ROUTER_PROXY_URL = "https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/ai"

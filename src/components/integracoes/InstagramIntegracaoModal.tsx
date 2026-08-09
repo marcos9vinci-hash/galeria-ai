@@ -61,7 +61,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
     setManualIgSuccess(null);
     setError(null);
     try {
-      const response = await fetch("https://galeria-ia-production.up.railway.app/api/instagram/login-manual", {
+      const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/instagram/login-manual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: manualIgToken })
@@ -83,7 +83,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
 
   const fetchAccounts = async () => {
     try {
-      const resp = await fetch("https://galeria-ia-production.up.railway.app/api/instagram/me");
+      const resp = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/instagram/me");
       if (resp.ok) {
         const data = await resp.json();
         const foundAccounts = data.accounts || [];
@@ -148,7 +148,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("https://galeria-ia-production.up.railway.app/api/auth/facebook/url");
+      const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/auth/facebook/url");
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.error || "Falha ao obter URL de autenticação. Verifique se o FACEBOOK_APP_ID está configurado nas variáveis de ambiente.");
@@ -195,7 +195,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-none w-[95vw] md:w-[90vw] lg:w-[80vw] max-h-[90vh] md:max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+      <DialogContent className="w-full max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto max-h-[90vh] overflow-y-auto flex flex-col rounded-2xl">
         <DialogHeader className="p-4 md:p-6 border-b shrink-0 bg-background/50 backdrop-blur-sm sticky top-0 z-20">
           <div className="flex items-center gap-3 mb-1 md:mb-2">
             <div className="flex -space-x-1.5 md:-space-x-2">
@@ -218,7 +218,7 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
 
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           {/* Tabs Selector: Horizontal on mobile, vertical sidebar on desktop */}
-          <div className="w-full md:w-48 border-b md:border-r bg-muted/20 p-1.5 md:p-2 flex md:flex-col gap-1.5 overflow-x-auto scrollbar-hide shrink-0 z-10">
+          <div className="w-full md:w-48 lg:w-56 border-b md:border-r bg-muted/20 p-1.5 md:p-2 flex md:flex-col gap-1.5 overflow-x-auto scrollbar-hide shrink-0 z-10">
             <button 
               onClick={() => setActiveTab('instagram')}
               className={`flex items-center justify-center md:justify-start gap-2 md:gap-3 px-4 py-2.5 rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap shrink-0 border ${activeTab === 'instagram' ? 'bg-white shadow-sm text-pink-600 border-pink-100 ring-1 ring-pink-50' : 'text-muted-foreground hover:bg-muted/50 border-transparent'}`}
@@ -256,8 +256,8 @@ export default function InstagramIntegracaoModal({ open, onClose, initialTab = "
           </div>
 
           {/* Content Area - Native Scroll for reliability */}
-          <div className="flex-1 overflow-y-auto bg-background">
-            <div className="p-4 md:p-8 space-y-8 pb-12 w-full">
+                    <div className="flex-1 overflow-y-auto bg-background">
+                      <div className="p-4 md:p-6 lg:p-8 space-y-8 pb-12 w-full max-w-lg mx-auto">
             <AnimatePresence mode="wait">
               {activeTab === 'instagram' && (
                 <motion.div 
