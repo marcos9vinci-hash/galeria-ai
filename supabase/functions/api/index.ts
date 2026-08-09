@@ -23,17 +23,16 @@ serve(async (req: Request) => {
     }
 
     // GET /auth/facebook/url
-    if (path === "/auth/facebook/url") {
-      const appId = Deno.env.get("FACEBOOK_APP_ID");
-      if (!appId) {
-        return json({ error: "FACEBOOK_APP_ID not configured" }, corsHeaders, 500);
-      }
-      const baseUrl = `${url.protocol}//${url.host}`;
-      const redirectUri = `${baseUrl}/auth/callback`;
-      const scopes = ["instagram_basic","instagram_content_publish","instagram_manage_comments","instagram_manage_insights","pages_show_list","pages_read_engagement","public_profile"].join(",");
-      const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
-      return json({ url: authUrl }, corsHeaders);
-    }
+        if (path === "/auth/facebook/url") {
+          const appId = Deno.env.get("FACEBOOK_APP_ID");
+          if (!appId) {
+            return json({ error: "FACEBOOK_APP_ID not configured" }, corsHeaders, 500);
+          }
+          const redirectUri = "https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/auth/facebook/callback";
+          const scopes = ["instagram_basic","instagram_content_publish","instagram_manage_comments","instagram_manage_insights","pages_show_list","pages_read_engagement","public_profile"].join(",");
+          const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
+          return json({ url: authUrl }, corsHeaders);
+        }
 
     // GET /instagram/me
     if (path === "/instagram/me") {
