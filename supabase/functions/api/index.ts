@@ -17,10 +17,12 @@ serve(async (req: Request) => {
   const path = url.pathname.replace(/^\/api/, "");
 
   try {
+    // GET /health
     if (path === "/health" || path === "") {
       return json({ status: "ok", timestamp: new Date().toISOString() }, corsHeaders);
     }
 
+    // GET /auth/facebook/url
     if (path === "/auth/facebook/url") {
       const appId = Deno.env.get("FACEBOOK_APP_ID");
       if (!appId) {
@@ -32,6 +34,7 @@ serve(async (req: Request) => {
       return json({ url: authUrl }, corsHeaders);
     }
 
+    // GET /auth/facebook/callback - Returns HTML that closes popup and notifies parent
     if (path === "/auth/facebook/callback") {
       const code = url.searchParams.get("code");
       const error = url.searchParams.get("error");
@@ -71,6 +74,7 @@ serve(async (req: Request) => {
       }
 
       try {
+        // Exchange code for access token
         const tokenRes = await fetch(
           "https://graph.facebook.com/v21.0/oauth/access_token?" +
           "client_id=" + encodeURIComponent(appId) +
@@ -90,6 +94,7 @@ serve(async (req: Request) => {
           });
         }
 
+        // Get long-lived token
         const longLivedRes = await fetch(
           "https://graph.facebook.com/v21.0/oauth/access_token?" +
           "grant_type=fb_exchange_token&client_id=" + encodeURIComponent(appId) +
@@ -100,6 +105,7 @@ serve(async (req: Request) => {
 
         const accessToken = longLivedData.access_token || tokenData.access_token;
 
+        // Return HTML that closes popup and notifies parent
         return new Response(generateCallbackHTML({
           success: true,
           accessToken: accessToken
@@ -118,6 +124,7 @@ serve(async (req: Request) => {
       }
     }
 
+    // GET /instagram/me
     if (path === "/instagram/me") {
       if (!fbToken) return json({ error: "Not authenticated" }, corsHeaders, 401);
       const pagesRes = await fetch("https://graph.facebook.com/v21.0/me/accounts?access_token=" + fbToken);
@@ -135,6 +142,7 @@ serve(async (req: Request) => {
       return json({ accounts }, corsHeaders);
     }
 
+    // GET /instagram/insights?igId=
     if (path === "/instagram/insights") {
       const igId = url.searchParams.get("igId");
       if (!fbToken) return json({ error: "Not authenticated" }, corsHeaders, 401);
@@ -166,6 +174,7 @@ serve(async (req: Request) => {
       }, corsHeaders);
     }
 
+    // GET /buffer/profiles
     if (path === "/buffer/profiles") {
       if (!bufferToken) return json({ error: "No buffer token" }, corsHeaders, 401);
       const query = "query GetChannels { account { organizations { id name channels { id service name avatar } } } }";
@@ -180,11 +189,13 @@ serve(async (req: Request) => {
       return json({ data: { profiles } }, corsHeaders);
     }
 
+    // POST /studio/plan-strategy
     if (path === "/studio/plan-strategy" && req.method === "POST") {
       const body = await req.json();
-      const { images } = body;
+      const { images, insights, profileInfo } = body;
       if (!images?.length) return json({ error: "No images" }, corsHeaders, 400);
 
+      // Simple fallback strategy
       const strategy = images.map((_, i) => ({
         index: i,
         type: i % 3 === 0 ? "reels" : i % 3 === 1 ? "feed" : "story",
@@ -196,17 +207,18 @@ serve(async (req: Request) => {
       return json(strategy, corsHeaders);
     }
 
+    // 404
     return json({ error: "Not found", path }, corsHeaders, 404);
-  } catch (err) {
+  } catch (err: any) {
     return json({ error: err.message || "Internal error" }, corsHeaders, 500);
   }
 });
 
-function json(data, headers, status = 200) {
+function json(data: any, headers: Record<string,string>, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...headers, "Content-Type": "application/json" } });
 }
 
-function escapeHtml(input) {
+function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&")
     .replace(/</g, "<")
@@ -215,8 +227,8 @@ function escapeHtml(input) {
     .replace(/'/g, "&#039;");
 }
 
-function generateCallbackHTML(data) {
-  function escapeHtml(input) {
+function generateCallbackHTML(data: { success: boolean; accessToken?: string; error?: string }): string {
+  function escapeHtml(input: string): string {
     return input
       .replace(/&/g, "&")
       .replace(/</g, "<")
@@ -232,7 +244,7 @@ function generateCallbackHTML(data) {
       .replace(/>/g, ">")
       .replace(/"/g, """)
       .replace(/'/g, "&#039;") : "";
-    return "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\" />\n  <title>Autenticação Concluída</title>\n</head>\n<body>\n  <script>\n    try {\n      if (window.opener) {\n        window.opener.postMessage({ type: 'FB_AUTH_SUCCESS', token: \"" + data.accessToken + "\" }, '*');\n      }\n    } catch (e) {}\n    window.close();\n  </script>\n</body>\n</html>";
+    return "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\" />\n  <title>Autentica\u00e7\u00e3o Conclu\u00edda</title>\n</head>\n<body>\n  <script>\n    try {\n      if (window.opener) {\n        window.opener.postMessage({ type: 'FB_AUTH_SUCCESS', token: \"" + data.accessToken + "\" }, '*');\n      }\n    } catch (e) {}\n    window.close();\n  </script>\n</body>\n</html>";
   }
 
   const errSafe = data.error ? data.error
@@ -241,15 +253,15 @@ function generateCallbackHTML(data) {
     .replace(/>/g, ">")
     .replace(/"/g, """)
     .replace(/'/g, "&#039;") : "Unknown error";
-  return "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\" />\n  <title>Erro de Autenticação</title>\n</head>\n<body>\n  <script>\n    try {\n      if (window.opener) {\n        window.opener.postMessage({ type: 'FB_AUTH_ERROR', error: \"" + data.error + "\" }, '*');\n      }\n    } catch (e) {}\n    setTimeout(() => window.close(), 1000);\n  </script>\n  <p style=\"font-family: sans-serif; padding: 20px; text-align: center; color: #dc2626;\">\n    Erro: " + data.error + "\n  </p>\n</body>\n</html>";
+  return "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\" />\n  <title>Erro de Autentica\u00e7\u00e3o</title>\n</head>\n<body>\n  <script>\n    try {\n      if (window.opener) {\n        window.opener.postMessage({ type: 'FB_AUTH_ERROR', error: \"" + data.error + "\" }, '*');\n      }\n    } catch (e) {}\n    setTimeout(() => window.close(), 1000);\n  </script>\n  <p style=\"font-family: sans-serif; padding: 20px; text-align: center; color: #dc2626;\">\n    Erro: " + data.error + "\n  </p>\n</body>\n</html>";
 }
 
-function getCookie(req, name) {
+function getCookie(req: Request, name: string): string | null {
   const raw = req.headers.get("Cookie") || "";
   const match = raw.split(";").find(c => c.trim().startsWith(name + "="));
   return match ? decodeURIComponent(match.split("=")[1].trim()) : null;
 }
 
-function json(data, headers, status = 200) {
+function json(data: any, headers: Record<string,string>, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { ...headers, "Content-Type": "application/json" } });
 }

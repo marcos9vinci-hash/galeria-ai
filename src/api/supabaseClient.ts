@@ -1,5 +1,5 @@
-// Supabase direct client - points to Supabase Edge Functions
-export const SUPABASE_FUNCTIONS_URL = 'https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1';
+// Supabase direct client - replaces Netlify /api/* proxy calls
+export const SUPABASE_FUNCTIONS_URL = 'https://galeria-ia-api.vercel.app/api';
 
 export async function supabaseFetch(path: string, options: RequestInit = {}) {
   const url = `${SUPABASE_FUNCTIONS_URL}${path}`;
@@ -16,36 +16,19 @@ export async function supabaseFetch(path: string, options: RequestInit = {}) {
   return fetch(url, { ...options, headers });
 }
 
-// Path mappings - all Supabase Edge Functions
+// Path mappings from old /api/* to Vercel API routes
 export const API_PATHS = {
   // Health
-  '/health': '/api/health',
-  
-  // LLM / AI
-  '/api/llm/invoke': '/api/llm/invoke',  // needs new function
+  '/health': '/health',
   
   // Instagram
-  '/api/instagram/me': '/api/instagram/me',
-  '/api/instagram/publish': '/api/instagram/publish',
-  '/api/instagram/scheduled-status': '/api/instagram/scheduled-status',
-  '/api/instagram/login-manual': '/api/instagram/login-manual',
-  '/api/auth/facebook/url': '/api/auth/facebook/url',
+  "https://galeria-ia-production.up.railway.app/api/instagram/me": '/instagram/me',
+  "https://galeria-ia-production.up.railway.app/api/instagram/publish": '/instagram/publish',
+  "https://galeria-ia-production.up.railway.app/api/instagram/scheduled-status": '/instagram/scheduled-status',
+  "https://galeria-ia-production.up.railway.app/api/auth/facebook/url": '/auth/facebook/url',
   
   // Buffer
-  '/api/buffer/profiles': '/api/buffer/profiles',
-  '/api/buffer/schedule-update': '/api/buffer/schedule-update',
-  
-  // Niche
-  '/api/niche/schedule-preferences': '/api/niche/schedule-preferences',
-  '/api/niche/detect': '/api/niche/detect',
-  '/api/niche/hashtags': '/api/niche/hashtags',
-  '/api/niche/profiles': '/api/niche/profiles',
-  
-  // Studio
-  '/api/studio/plan-strategy': '/api/studio/plan-strategy',
-  
-  // AI / Image
-  '/api/ai/generate-image': '/api/ai/generate-image',
-  '/api/airtop/scrape-gem': '/api/airtop/scrape-gem',
-  '/api/airtop/generate-tattoo': '/api/airtop/generate-tattoo',
+  "https://galeria-ia-production.up.railway.app/api/buffer/profiles": '/buffer/profiles',
+  "https://galeria-ia-production.up.railway.app/api/buffer/schedule-update": '/buffer/schedule-update',
+  "https://galeria-ia-production.up.railway.app/api/buffer/create-update": '/buffer/create-update',
 };
