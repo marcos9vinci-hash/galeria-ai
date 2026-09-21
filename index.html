@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>Galeria IA - InkDream</title>
+    <script>
+      // Clear old PWA service worker cache automatically
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (var r of registrations) {
+            r.unregister();
+          }
+        });
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var name of names) {
+              caches.delete(name);
+            }
+          });
+        }
+      }
+    </script>
   </head>
   <body>
     <script>
@@ -17,4 +34,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
