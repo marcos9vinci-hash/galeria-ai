@@ -32,33 +32,33 @@ export default function InstagramInsights({ igId }: InstagramInsightsProps) {
   });
 
   const fetchInsights = async () => {
-      if (!igId) return;
-      setLoading(true);
-      try {
-        const resp = await fetch(`https://galeria-ia-cloudflare.vercel.app/api/instagram/insights?igId=${igId}`);
-        if (resp.ok) {
-          const insights = await resp.json();
-          setData(insights);
-        } else {
-          // Fallback em caso de falha da API
-          setData({
-            summary: {
-              reach: 12400,
-              engagement: 1200,
-              followers: 2506,
-              impressions: 45200,
-              avgEngagement: "45.2"
-            },
-            audienceActivity: [],
-            recentMedia: []
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch insights", error);
-      } finally {
-        setLoading(false);
+    if (!igId) return;
+    setLoading(true);
+    try {
+      const resp = await fetch(`https://galeria-ia-cloudflare.vercel.app/api/instagram/insights?igId=${igId}`);
+      if (resp.ok) {
+        const insights = await resp.json();
+        setData(insights);
+      } else {
+        // Fallback em caso de falha da API
+        setData({
+          summary: {
+            reach: 12400,
+            engagement: 1200,
+            followers: 2506,
+            impressions: 45200,
+            avgEngagement: "45.2"
+          },
+          audienceActivity: [],
+          recentMedia: []
+        });
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch insights", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchInsights();

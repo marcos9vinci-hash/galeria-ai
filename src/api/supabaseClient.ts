@@ -1,5 +1,5 @@
 // Supabase direct client - replaces Netlify /api/* proxy calls
-export const SUPABASE_FUNCTIONS_URL = import.meta.env.VITE_ROUTER_PROXY_URL || 'https://galeria-ia-cloudflare.vercel.app/api';
+export const SUPABASE_FUNCTIONS_URL = 'https://galeria-ia-cloudflare.vercel.app/api';
 
 export async function supabaseFetch(path: string, options: RequestInit = {}) {
   const url = `${SUPABASE_FUNCTIONS_URL}${path}`;
@@ -16,19 +16,36 @@ export async function supabaseFetch(path: string, options: RequestInit = {}) {
   return fetch(url, { ...options, headers });
 }
 
-// Path mappings from old /api/* to Vercel API routes
+// Path mappings from old /api/* to Supabase functions
 export const API_PATHS = {
   // Health
   '/health': '/health',
   
+  // LLM / AI
+  "https://galeria-ia-cloudflare.vercel.app/api/llm/invoke": "https://galeria-ia-cloudflare.vercel.app/api/llm/invoke",  // needs new function
+  
   // Instagram
-  "https://galeria-ia-production.up.railway.app/api/instagram/me": '/instagram/me',
-  "https://galeria-ia-production.up.railway.app/api/instagram/publish": '/instagram/publish',
-  "https://galeria-ia-production.up.railway.app/api/instagram/scheduled-status": '/instagram/scheduled-status',
-  "https://galeria-ia-production.up.railway.app/api/auth/facebook/url": '/auth/facebook/url',
+  "https://galeria-ia-cloudflare.vercel.app/api/instagram/me": '/instagram/me',
+  "https://galeria-ia-cloudflare.vercel.app/api/instagram/publish": '/instagram/publish',
+  "https://galeria-ia-cloudflare.vercel.app/api/instagram/scheduled-status": '/instagram/scheduled-status',
+  "https://galeria-ia-cloudflare.vercel.app/api/instagram/login-manual": '/instagram/login-manual',
+  "https://galeria-ia-cloudflare.vercel.app/api/auth/facebook/url": '/auth/facebook/url',
   
   // Buffer
-  "https://galeria-ia-production.up.railway.app/api/buffer/profiles": '/buffer/profiles',
-  "https://galeria-ia-production.up.railway.app/api/buffer/schedule-update": '/buffer/schedule-update',
-  "https://galeria-ia-production.up.railway.app/api/buffer/create-update": '/buffer/create-update',
+  "https://galeria-ia-cloudflare.vercel.app/api/buffer/profiles": '/buffer/profiles',
+  "https://galeria-ia-cloudflare.vercel.app/api/buffer/schedule-update": '/buffer/schedule-update',
+  
+  // Niche
+  "https://galeria-ia-cloudflare.vercel.app/api/niche/schedule-preferences": '/niche/schedule-preferences',
+  "https://galeria-ia-cloudflare.vercel.app/api/niche/detect": '/niche/detect',
+  "https://galeria-ia-cloudflare.vercel.app/api/niche/hashtags": '/niche/hashtags',
+  "https://galeria-ia-cloudflare.vercel.app/api/niche/profiles": '/niche/profiles',
+  
+  // Studio
+  "https://galeria-ia-cloudflare.vercel.app/api/studio/plan-strategy": '/studio/plan-strategy',
+  
+  // AI / Image
+  "https://galeria-ia-cloudflare.vercel.app/api/ai/generate-image": '/ai/generate-image',
+  "https://galeria-ia-cloudflare.vercel.app/api/airtop/scrape-gem": '/airtop/scrape-gem',
+  "https://galeria-ia-cloudflare.vercel.app/api/airtop/generate-tattoo": '/airtop/generate-tattoo',
 };

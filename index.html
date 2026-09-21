@@ -5,20 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Galeria IA - InkDream</title>
     <script>
-      // Clear old PWA service worker cache automatically
+      // Clear old PWA service worker cache & storage
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for (var r of registrations) {
             r.unregister();
           }
         });
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            for (var name of names) {
-              caches.delete(name);
-            }
-          });
-        }
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (var name of names) {
+            caches.delete(name);
+          }
+        });
       }
     </script>
   </head>
@@ -34,3 +34,4 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

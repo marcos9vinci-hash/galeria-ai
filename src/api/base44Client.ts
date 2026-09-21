@@ -1,7 +1,5 @@
 // Bridge component to simulate the base44 SDK used in the original snippets
 // but proxies call to the backend to protect GEMINI_API_KEY.
-const API_BASE_URL = import.meta.env.VITE_ROUTER_PROXY_URL || 'https://galeria-ia-cloudflare.vercel.app/api';
-
 export const base44 = {
   integrations: {
     Core: {
@@ -18,7 +16,7 @@ export const base44 = {
       },
       InvokeLLM: async ({ prompt, file_urls, response_json_schema }: any) => {
         try {
-          const res = await fetch(`${API_BASE_URL}/llm/invoke`, {
+          const res = await fetch("https://galeria-ia-cloudflare.vercel.app/api/llm/invoke", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

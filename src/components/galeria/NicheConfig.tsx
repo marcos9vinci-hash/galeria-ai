@@ -26,127 +26,127 @@ export default function NicheConfig({ igUsername, igId, onClose }: NicheConfigPr
   const [intelligence, setIntelligence] = useState<any>(null);
 
   const handleHoursAction = async (action: "add" | "remove", targetHour: string) => {
-      let hours = config?.bestHours || ["12:00", "18:00", "20:00"];
-      if (action === "add") {
-        const trimmed = targetHour.trim();
-        if (!trimmed.match(/^\d{2}:\d{2}$/)) {
-          alert("Formato inválido! Use HH:MM (ex: 19:30)");
-          return;
-        }
-        if (!hours.includes(trimmed)) {
-          hours = [...hours, trimmed];
-        }
-      } else {
-        hours = hours.filter((h: string) => h !== targetHour);
+    let hours = config?.bestHours || ["12:00", "18:00", "20:00"];
+    if (action === "add") {
+      const trimmed = targetHour.trim();
+      if (!trimmed.match(/^\d{2}:\d{2}$/)) {
+        alert("Formato inválido! Use HH:MM (ex: 19:30)");
+        return;
       }
+      if (!hours.includes(trimmed)) {
+        hours = [...hours, trimmed];
+      }
+    } else {
+      hours = hours.filter((h: string) => h !== targetHour);
+    }
 
-      try {
-        setActionLoading(true);
-        const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/schedule-preferences", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            igUsername,
-            bestHours: hours
-          })
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          setConfig(data);
-          if (action === "add") setNewHour("");
-        }
-      } catch (e) {
-        console.error("Error saving hours:", e);
-      } finally {
-        setActionLoading(false);
+    try {
+      setActionLoading(true);
+      const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/schedule-preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          igUsername,
+          bestHours: hours
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConfig(data);
+        if (action === "add") setNewHour("");
       }
-    };
+    } catch (e) {
+      console.error("Error saving hours:", e);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchConfig();
   }, [igUsername]);
 
   const fetchConfig = async () => {
-      try {
-        setLoading(true);
-        const resp = await fetch(`https://galeria-ia-cloudflare.vercel.app/api/niche/config?igUsername=${igUsername}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          setConfig(data);
-        } else if (resp.status === 404) {
-          // Auto-run detection if no config exists
-          await handleDetect();
-        }
-      } catch (e) {
-        console.error("Error loading niche config:", e);
-      } finally {
-        setLoading(false);
+    try {
+      setLoading(true);
+      const resp = await fetch(`https://galeria-ia-cloudflare.vercel.app/api/niche/config?igUsername=${igUsername}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setConfig(data);
+      } else if (resp.status === 404) {
+        // Auto-run detection if no config exists
+        await handleDetect();
       }
-    };
+    } catch (e) {
+      console.error("Error loading niche config:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleDetect = async (force: boolean = false) => {
-      try {
-        setDetecting(true);
-        const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/detect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ igId, igUsername, force })
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          setConfig(data);
-        }
-      } catch (e) {
-        console.error("Error detecting niche:", e);
-      } finally {
-        setDetecting(false);
+  const handleDetect = async (force: boolean = false) => {
+    try {
+      setDetecting(true);
+      const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ igId, igUsername, force })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConfig(data);
       }
-    };
+    } catch (e) {
+      console.error("Error detecting niche:", e);
+    } finally {
+      setDetecting(false);
+    }
+  };
 
   const handleHashtagAction = async (action: "add" | "remove", targetTag: string) => {
-      if (action === "add" && !targetTag.trim()) return;
-      try {
-        setActionLoading(true);
-        const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/hashtags", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            igUsername,
-            action,
-            hashtag: targetTag.trim()
-          })
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          setConfig(data);
-          if (action === "add") setNewHashtag("");
-        }
-      } catch (e) {
-        console.error("Error managing hashtag:", e);
-      } finally {
-        setActionLoading(false);
+    if (action === "add" && !targetTag.trim()) return;
+    try {
+      setActionLoading(true);
+      const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/hashtags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          igUsername,
+          action,
+          hashtag: targetTag.trim()
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConfig(data);
+        if (action === "add") setNewHashtag("");
       }
-    };
+    } catch (e) {
+      console.error("Error managing hashtag:", e);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-    const handleProfileAction = async (action: "add" | "remove", targetProfile: string) => {
-      if (action === "add" && !targetProfile.trim()) return;
-      try {
-        setActionLoading(true);
-        const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/profiles", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            igUsername,
-            action,
-            handle: targetProfile.trim()
-          })
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          setConfig(data);
-          if (action === "add") setNewProfile("");
-        }
-      } catch (e) {
+  const handleProfileAction = async (action: "add" | "remove", targetProfile: string) => {
+    if (action === "add" && !targetProfile.trim()) return;
+    try {
+      setActionLoading(true);
+      const resp = await fetch("https://galeria-ia-cloudflare.vercel.app/api/niche/profiles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          igUsername,
+          action,
+          handle: targetProfile.trim()
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setConfig(data);
+        if (action === "add") setNewProfile("");
+      }
+    } catch (e) {
       console.error("Error managing benchmark profile:", e);
     } finally {
       setActionLoading(false);
