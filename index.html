@@ -5,28 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Galeria IA - InkDream</title>
     <script>
-      // Clear old PWA service worker cache automatically
+      // Clear old PWA service worker cache & storage
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for (var r of registrations) {
             r.unregister();
           }
         });
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            for (var name of names) {
-              caches.delete(name);
-            }
-          });
-        }
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (var name of names) {
+            caches.delete(name);
+          }
+        });
       }
     </script>
-    <script type="module" crossorigin src="./assets/index-CJapPZX1.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/vendor-data-dcDyQQkY.js">
-    <link rel="modulepreload" crossorigin href="./assets/vendor-react-ClvFsbGb.js">
-    <link rel="modulepreload" crossorigin href="./assets/vendor-supabase-CG6S1lgy.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-DfLVs3re.css">
-  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+    <script type="module" crossorigin src="./assets/index-CZMaRiNc.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-data-Ta3hzCoa.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-react-Q-YLb2Wc.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-supabase-CQPPzcvI.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-tLh6bNfV.css">
+  </head>
   <body>
     <script>
       window.addEventListener('error', function(e) {
@@ -38,3 +38,4 @@
     <div id="root"></div>
   </body>
 </html>
+
