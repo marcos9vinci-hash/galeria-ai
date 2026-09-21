@@ -9,26 +9,26 @@ export function BufferStatus() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfiles = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("https://wrybqqitsylqyhgzodyc.supabase.co/functions/v1/api/buffer/profiles");
-      const data = await response.json();
-      if (data.data?.profiles && Array.isArray(data.data.profiles)) {
-        setProfiles(data.data.profiles);
-      } else if (data.data?.account?.organizations) {
-        // Fallback for nested structure if server doesn't flatten correctly
-        const channels = data.data.account.organizations.flatMap((org: any) => org.channels || []);
-        setProfiles(channels);
-      } else if (data.error) {
-        setError(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("https://galeria-ia-api.vercel.app/api/buffer/profiles");
+        const data = await response.json();
+        if (data.data?.profiles && Array.isArray(data.data.profiles)) {
+          setProfiles(data.data.profiles);
+        } else if (data.data?.account?.organizations) {
+          // Fallback for nested structure if server doesn't flatten correctly
+          const channels = data.data.account.organizations.flatMap((org: any) => org.channels || []);
+          setProfiles(channels);
+        } else if (data.error) {
+          setError(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   useEffect(() => {
     fetchProfiles();
