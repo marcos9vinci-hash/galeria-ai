@@ -27,7 +27,7 @@ export default function EstudioIAWorkflow({ open, onClose, igId, profileInfo, on
 
   useEffect(() => {
       if (open && profileInfo?.username) {
-        fetch(`https://galeria-ia-api.vercel.app/api/niche/config?igUsername=${profileInfo.username}`)
+        fetch(`https://galeria-ia-cloudflare.vercel.app/api/niche/config?igUsername=${profileInfo.username}`)
         .then(res => res.json())
         .then(data => {
           if (data && !data.error) {

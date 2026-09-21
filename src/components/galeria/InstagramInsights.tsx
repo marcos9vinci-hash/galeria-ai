@@ -35,7 +35,7 @@ export default function InstagramInsights({ igId }: InstagramInsightsProps) {
       if (!igId) return;
       setLoading(true);
       try {
-        const resp = await fetch(`https://galeria-ia-api.vercel.app/api/instagram/insights?igId=${igId}`);
+        const resp = await fetch(`https://galeria-ia-cloudflare.vercel.app/api/instagram/insights?igId=${igId}`);
         if (resp.ok) {
           const insights = await resp.json();
           setData(insights);

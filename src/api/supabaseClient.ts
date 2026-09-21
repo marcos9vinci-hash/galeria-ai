@@ -1,5 +1,5 @@
 // Supabase direct client - replaces Netlify /api/* proxy calls
-export const SUPABASE_FUNCTIONS_URL = 'https://galeria-ia-api.vercel.app/api';
+export const SUPABASE_FUNCTIONS_URL = import.meta.env.VITE_ROUTER_PROXY_URL || 'https://galeria-ia-cloudflare.vercel.app/api';
 
 export async function supabaseFetch(path: string, options: RequestInit = {}) {
   const url = `${SUPABASE_FUNCTIONS_URL}${path}`;

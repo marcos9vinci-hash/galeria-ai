@@ -1,6 +1,6 @@
 // Bridge component to simulate the base44 SDK used in the original snippets
 // but proxies call to the backend to protect GEMINI_API_KEY.
-const API_BASE_URL = 'https://galeria-ia-api.vercel.app/api';
+const API_BASE_URL = import.meta.env.VITE_ROUTER_PROXY_URL || 'https://galeria-ia-cloudflare.vercel.app/api';
 
 export const base44 = {
   integrations: {

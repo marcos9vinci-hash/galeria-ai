@@ -33,7 +33,7 @@ export default function BufferScheduleManager() {
         setSavingManualBuffer(true);
         setManualBufferSuccess(null);
         try {
-          const response = await fetch("https://galeria-ia-api.vercel.app/api/auth/buffer/manual-token", {
+          const response = await fetch("https://galeria-ia-cloudflare.vercel.app/api/auth/buffer/manual-token", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: manualBufferToken })
@@ -56,7 +56,7 @@ export default function BufferScheduleManager() {
 
       const fetchProfiles = async () => {
         try {
-          const response = await fetch("https://galeria-ia-api.vercel.app/api/buffer/profiles");
+          const response = await fetch("https://galeria-ia-cloudflare.vercel.app/api/buffer/profiles");
           const data = await response.json();
           const channels = data.data?.profiles || data.data?.account?.organizations?.flatMap((org: any) => org.channels || []) || [];
           setProfiles(channels);
@@ -73,7 +73,7 @@ export default function BufferScheduleManager() {
         setError(null);
         setSuccess(null);
         try {
-          const response = await fetch(`https://galeria-ia-api.vercel.app/api/buffer/schedule/${id}`);
+          const response = await fetch(`https://galeria-ia-cloudflare.vercel.app/api/buffer/schedule/${id}`);
           const data = await response.json();
           if (data.data?.node?.postingSchedules) {
             setSchedules(data.data.node.postingSchedules);
@@ -140,7 +140,7 @@ export default function BufferScheduleManager() {
         setError(null);
         setSuccess(null);
         try {
-          const response = await fetch("https://galeria-ia-api.vercel.app/api/buffer/schedule-update", {
+          const response = await fetch("https://galeria-ia-cloudflare.vercel.app/api/buffer/schedule-update", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
