@@ -1,109 +1,86 @@
-import { parse } from 'cookie';
-import fetch from 'node-fetch';
-
-const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
-const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
-const REDIRECT_URI = process.env.REDIRECT_URI || 'https://galeria-ia.vercel.app/api/auth/facebook/callback';
-const SCOPES = 'instagram_basic,instagram_content_publish,instagram_manage_comments,instagram_manage_insights,pages_show_list,pages_read_engagement,public_profile';
-
 export default async function handler(req, res) {
   // CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Cookie'
+  );
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
+  const url = new URL(req.url, `https://${req.headers.host || 'galeria-ia-cloudflare.vercel.app'}`);
+  const path = url.pathname.replace(/^\/api/, '');
+
+  const fbToken = req.cookies?.fb_access_token || req.headers.authorization?.replace('Bearer ', '');
+  const bufferToken = process.env.BUFFER_ACCESS_TOKEN || req.cookies?.buffer_access_token;
+
   try {
-    // GET /api/auth/facebook/url
-    if (req.method === 'GET' && req.url.includes('/auth/facebook/url')) {
+    if (path === '/health' || path === '' || path === '/') {
+      return res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    }
+
+    if (path === '/auth/facebook/url') {
       const appId = process.env.FACEBOOK_APP_ID;
-      if (!process.env.FACEBOOK_APP_ID) {
+      if (!appId) {
         return res.status(500).json({ error: 'FACEBOOK_APP_ID not configured' });
       }
-
-      const redirectUri = `${process.env.VERCEL_URL || 'https://galeria-ia.vercel.app'}/api/auth/facebook/callback`;
-      const scopes = 'instagram_basic,instagram_content_publish,instagram_manage_comments,instagram_manage_insights,pages_show_list,pages_read_engagement,public_profile';
-      const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${process.env.FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent('instagram_basic,instagram_content_publish,instagram_manage_comments,instagram_manage_insights,pages_show_list,pages_read_engagement,public_profile')}&response_type=code`;
-
+      const redirectUri = `https://${req.headers.host}/api/auth/facebook/callback`;
+      const scopes = ['instagram_basic','instagram_content_publish','instagram_manage_comments','instagram_manage_insights','pages_show_list','pages_read_engagement','public_profile'].join(',');
+      const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
       return res.status(200).json({ url: authUrl });
     }
 
-    // Handle callback
-    if (req.url.includes('/auth/facebook/callback')) {
-      const { code, error } = req.query;
+    if (path === '/auth/facebook/callback') {
+      const code = req.query?.code;
+      const error = req.query?.error;
 
       if (error) {
-        return res.redirect(`/auth/facebook/callback?error=${encodeURIComponent('OAuth error: ' + error)}`);
+        return res.status(200).send(generateHTML(false, null, `OAuth error: ${error}`));
+      }
+      if (!code) {
+        return res.status(200).send(generateHTML(false, null, 'Missing code parameter'));
       }
 
-      if (!req.query.code) {
-        return res.redirect('/auth/facebook/callback?error=Missing%20code%20parameter');
-      }
+      const appId = process.env.FACEBOOK_APP_ID;
+      const appSecret = process.env.FACEBOOK_APP_SECRET;
+      const redirectUri = `https://${req.headers.host}/api/auth/facebook/callback`;
 
-      const { FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, REDIRECT_URI } = process.env;
-      const redirectUri = process.env.REDIRECT_URI || 'https://galeria-ia.vercel.app/api/auth/facebook/callback';
-
-      if (!process.env.FACEBOOK_APP_ID || !process.env.FACEBOOK_APP_SECRET) {
-        return res.redirect(`${process.env.VERCEL_URL || 'https://galeria-ia.vercel.app'}/auth/facebook/callback?error=Facebook%20credentials%20not%20configured`);
+      if (!appId || !appSecret) {
+        return res.status(200).send(generateHTML(false, null, 'Facebook credentials not configured'));
       }
 
       try {
-        // Exchange code for access token
         const tokenRes = await fetch(
-          'https://graph.facebook.com/v21.0/oauth/access_token?' +
-          new URLSearchParams({
-            client_id: process.env.FACEBOOK_APP_ID,
-            client_secret: process.env.FACEBOOK_APP_SECRET,
-            redirect_uri: process.env.REDIRECT_URI || 'https://galeria-ia.vercel.app/api/auth/facebook/callback',
-            code: req.query.code
-          }).toString()
+          `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${encodeURIComponent(appId)}&client_secret=${encodeURIComponent(appSecret)}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${encodeURIComponent(code)}`
         );
         const tokenData = await tokenRes.json();
 
         if (!tokenData.access_token) {
-          return res.redirect(`${process.env.VERCEL_URL || 'https://galeria-ia.vercel.app'}/auth/facebook/callback?error=Failed%20to%20exchange%20code%20for%20token`);
+          return res.status(200).send(generateHTML(false, null, 'Failed to exchange code for token'));
         }
 
-        // Get long-lived token
         const longLivedRes = await fetch(
-          `https://graph.facebook.com/v21.0/oauth/access_token?` +
-          new URLSearchParams({
-            grant_type: 'fb_exchange_token',
-            client_id: process.env.FACEBOOK_APP_ID,
-            client_secret: process.env.FACEBOOK_APP_SECRET,
-            fb_exchange_token: tokenData.access_token
-          }).toString()
+          `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${encodeURIComponent(appId)}&client_secret=${encodeURIComponent(appSecret)}&fb_exchange_token=${encodeURIComponent(tokenData.access_token)}`
         );
         const longLivedData = await longLivedRes.json();
-
         const accessToken = longLivedData.access_token || tokenData.access_token;
 
-        // Set cookie and redirect to frontend
-        res.setHeader('Set-Cookie', `fb_access_token=${accessToken}; Path=/; Secure; SameSite=Lax; Max-Age=5184000; HttpOnly`);
-        return res.redirect(`${process.env.VERCEL_URL || 'https://galeria-ia.vercel.app'}?auth=success`);
+        return res.status(200).send(generateHTML(true, accessToken, null));
       } catch (err) {
-        return res.redirect(`/${process.env.VERCEL_URL || 'https://galeria-ia.vercel.app'}?error=callback_error`);
+        return res.status(200).send(generateHTML(false, null, err.message));
       }
     }
 
-    // GET /api/instagram/me
-    if (req.url.includes('/instagram/me') && req.method === 'GET') {
-      const cookies = req.headers.cookie || '';
-      const fbToken = req.headers.cookie?.split('; ').find(c => c.startsWith('fb_access_token='))?.split('=')[1];
-
-      if (!req.headers.cookie?.includes('fb_access_token=')) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      const fbToken = req.headers.cookie?.split('; ').find(c => c.startsWith('fb_access_token='))?.split('=')[1];
-
+    if (path === '/instagram/me') {
+      if (!fbToken) return res.status(401).json({ error: 'Not authenticated' });
       const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${fbToken}`);
       const pages = await pagesRes.json();
       const accounts = [];
-
       for (const page of (pages.data || [])) {
         const infoRes = await fetch(`https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account&access_token=${fbToken}`);
         const info = await infoRes.json();
@@ -113,33 +90,24 @@ export default async function handler(req, res) {
           accounts.push({ pageId: page.id, pageName: page.name, igId: info.instagram_business_account.id, ...igInfo });
         }
       }
-
       return res.status(200).json({ accounts });
     }
 
-    // GET /api/instagram/insights
-    if (req.url.includes('/instagram/insights') && req.method === 'GET') {
-      const igId = req.query.igId;
-      const cookies = req.headers.cookie || '';
-      const fbToken = req.headers.cookie?.split('; ').find(c => c.startsWith('fb_access_token='))?.split('=')[1];
-
-      if (!fbToken) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-      if (!igId) {
-        return res.status(400).json({ error: 'Missing igId' });
-      }
+    if (path === '/instagram/insights') {
+      const igId = req.query?.igId;
+      if (!fbToken) return res.status(401).json({ error: 'Not authenticated' });
+      if (!igId) return res.status(400).json({ error: 'Missing igId' });
 
       const basicRes = await fetch(`https://graph.facebook.com/v21.0/${igId}?fields=followers_count,media_count,name,username,profile_picture_url&access_token=${fbToken}`);
       const basicInfo = await basicRes.json();
 
       let reach = 0;
       try {
-        const since = Math.floor((Date.now() - 30*24*60*60*1000) / 1000);
+        const since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
         const until = Math.floor(Date.now() / 1000);
         const insRes = await fetch(`https://graph.facebook.com/v21.0/${igId}/insights?metric=reach,impressions&period=day&since=${since}&until=${until}&access_token=${fbToken}`);
         const insights = await insRes.json();
-        const reachObj = (insights.data || []).find(i => i.name === 'reach');
+        const reachObj = (insights.data || []).find((i) => i.name === 'reach');
         reach = reachObj?.values?.reduce((a, v) => a + v.value, 0) || 0;
       } catch {
         reach = Math.round((basicInfo.followers_count || 2506) * 4.9);
@@ -156,75 +124,25 @@ export default async function handler(req, res) {
       });
     }
 
-    // GET /api/buffer/profiles
-    if (req.url.includes('/buffer/profiles') && req.method === 'GET') {
-      const cookies = req.headers.cookie || '';
-      const bufferToken = req.headers.cookie?.split('; ').find(c => c.startsWith('buffer_access_token='))?.split('=')[1];
-
-      if (!bufferToken) {
-        return res.status(401).json({ error: 'No buffer token' });
-      }
-
-      const query = `
-        query GetChannels {
-          account {
-            organizations {
-              id
-              name
-              channels {
-                id
-                service
-                name
-                avatar
-              }
-            }
-          }
-        }
-      `;
-
+    if (path === '/buffer/profiles') {
+      if (!bufferToken) return res.status(401).json({ error: 'No buffer token' });
+      const query = 'query GetChannels { account { organizations { id name channels { id service name avatar } } } }';
       const bufRes = await fetch('https://api.buffer.com/graphql', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${bufferToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ query: `
-          query GetChannels {
-            account {
-              organizations {
-                id
-                name
-                channels {
-                  id
-                  service
-                  name
-                  avatar
-                }
-              }
-            }
-          }
-        ` }),
+        headers: { 'Authorization': `Bearer ${bufferToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
       });
-
       const data = await bufRes.json();
       const orgs = data?.data?.account?.organizations || [];
-      const profiles = orgs.flatMap(org => 
-        (org.channels || []).map(c => ({ ...c, organizationId: org.id }))
-      );
-
+      const profiles = orgs.flatMap((org) => (org.channels || []).map((c) => ({ ...c, organizationId: org.id })));
       return res.status(200).json({ data: { profiles } });
     }
 
-    // POST /api/studio/plan-strategy
-    if (req.url.includes('/studio/plan-strategy') && req.method === 'POST') {
-      const body = req.body;
-      const { images } = req.body;
+    if (path === '/studio/plan-strategy' && req.method === 'POST') {
+      const { images } = req.body || {};
+      if (!images?.length) return res.status(400).json({ error: 'No images' });
 
-      if (!body.images?.length) {
-        return res.status(400).json({ error: 'No images' });
-      }
-
-      const strategy = body.images.map((_, i) => ({
+      const strategy = images.map((_, i) => ({
         index: i,
         type: i % 3 === 0 ? 'reels' : i % 3 === 1 ? 'feed' : 'story',
         date: new Date(Date.now() + i * 86400000).toISOString(),
@@ -232,16 +150,18 @@ export default async function handler(req, res) {
         hashtags: ['#tattooautoral', '#tatuagemfineline', '#aflordapele'],
         reasoning: 'Distribuição sequencial para manter constância no feed.',
       }));
-
       return res.status(200).json(strategy);
     }
 
-    // 404
-    res.status(404).json({ error: 'Not found' });
+    return res.status(404).json({ error: 'Not found', path });
   } catch (err) {
-    console.error('API Error:', err);
     return res.status(500).json({ error: err.message || 'Internal error' });
   }
 }
 
-export default handler;
+function generateHTML(success, token, error) {
+  if (success) {
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Autenticação Concluída</title></head><body><script>try{if(window.opener){window.opener.postMessage({type:'FB_AUTH_SUCCESS',token:'${token}'},'*');}}catch(e){}window.close();</script></body></html>`;
+  }
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Erro de Autenticação</title></head><body><script>try{if(window.opener){window.opener.postMessage({type:'FB_AUTH_ERROR',error:'${error}'},'*');}}catch(e){}setTimeout(()=>window.close(),1000);</script><p style="font-family:sans-serif;padding:20px;text-align:center;color:#dc2626;">Erro: ${error}</p></body></html>`;
+}
