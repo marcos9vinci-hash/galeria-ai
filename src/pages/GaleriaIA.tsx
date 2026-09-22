@@ -79,6 +79,7 @@ export default function GaleriaIA() {
   const [showConfigWhatsapp, setShowConfigWhatsapp] = useState(false);
   const [showEstudioIA, setShowEstudioIA] = useState(false);
   const [showNicheConfig, setShowNicheConfig] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   // --- Estados: Editor / Calendário ---
   // TODO: Move to useCalendar/useEditor hooks
@@ -510,49 +511,30 @@ export default function GaleriaIA() {
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      {/* Header */}
-      <header className="px-6 py-4 border-b border-border flex flex-col md:flex-row justify-between md:items-center gap-4 bg-card/50 backdrop-blur-md sticky top-0 z-20">
-        <div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent italic">Galeria IA</h1>
-          <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mt-1">Estúdio Criativo de Tatuagem</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <InstagramStatusBadge 
-            connected={igConnected} 
-            profile={profileInfo} 
-            hasPublishPerm={hasPublishPerm}
-            onClick={() => {
-              setModalInitialTab("instagram");
-              setShowIgModal(true);
-            }} 
-          />
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setShowConfigWhatsapp(true)}>
-             <Settings2 className="w-5 h-5 text-muted-foreground" />
-          </Button>
-          <div className="hidden md:block">
-
-          </div>
-        </div>
-          <Button 
-            size="sm" 
-            className={`rounded-full px-4 ${isPlanning ? 'bg-primary/50 cursor-not-allowed' : ''}`} 
-            onClick={() => !isPlanning && fileInputRef.current?.click()}
-            disabled={isPlanning}
-          >
-            {isPlanning ? (
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 animate-pulse text-yellow-300" />
-                <span>O Cérebro planeja...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Upload className="w-4 h-4" />
-                <span>Carregar</span>
-                <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-              </div>
-            )}
-          </Button>
-      </header>
+      <AppHeader
+        title="Galeria IA"
+        description="Estúdio Criativo de Tatuagem"
+        profileInfo={profileInfo}
+        igConnected={igConnected}
+        hasPublishPerm={hasPublishPerm}
+        isPlanning={isPlanning}
+        sidebarOpen={showSidebar}
+        onToggleSidebar={() => setShowSidebar(!showSidebar)}
+        onOpenIgModal={() => {
+          setModalInitialTab("instagram");
+          setShowIgModal(true);
+        }}
+        onOpenConfigWhatsapp={() => setShowConfigWhatsapp(true)}
+        onUpload={() => !isPlanning && fileInputRef.current?.click()}
+      />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        multiple
+        accept="image/*"
+        className="hidden"
+      />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24">
         <AnimatePresence>
@@ -591,126 +573,93 @@ export default function GaleriaIA() {
           )}
         </AnimatePresence>
 
-        <Notifications 
-          show={showNotifs}
-          onClose={() => setShowNotifs(false)}
-          posts={posts.filter(p => !dismissedNotifs.includes(p.id))}
-          bufferPosts={bufferPosts.filter(p => !dismissedNotifs.includes(p.id))}
-          onPostClick={(p: any) => {
-            const dayStr = format(new Date(p.date), 'yyyy-MM-dd');
-            const dayPosts = posts.filter(pp => format(new Date(pp.date), 'yyyy-MM-dd') === dayStr);
-            setEditorState({ posts: dayPosts.length ? dayPosts : [p], index: dayPosts.findIndex(pp => pp.id === p.id) || 0 });
-            setShowNotifs(false);
-          }}
-          onDismiss={(id: string | number, source: 'local' | 'buffer') => {
-            setDismissedNotifs(prev => [...prev, id]);
-            if (source === 'buffer') {
-              setBufferPosts(prev => prev.filter(p => p.id !== id));
-            }
-          }}
-        />
-
         {isAuthenticated === null ? (
           <div className="flex h-screen items-center justify-center text-muted-foreground">Carregando autenticação...</div>
         ) : isAuthenticated === false ? (
           <div className="flex h-screen items-center justify-center text-destructive">Erro de autenticação. Tente novamente.</div>
         ) : (
-          <div className="flex flex-col h-full bg-background overflow-hidden">
-            <AppHeader
-              title="Galeria IA"
-              description="Estúdio Criativo de Tatuagem"
-              profileInfo={profileInfo}
-              igConnected={igConnected}
-              hasPublishPerm={hasPublishPerm}
-              isPlanning={isPlanning}
-              onOpenIgModal={() => {
-                setModalInitialTab("instagram");
-                setShowIgModal(true);
-              }}
-              onOpenConfigWhatsapp={() => setShowConfigWhatsapp(true)}
-              onUpload={() => !isPlanning && fileInputRef.current?.click()}
-            />
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="w-full max-w-sm grid grid-cols-4 mx-auto bg-muted/40 p-1 rounded-full border border-border/50">
-                  <TabsTrigger value="calendario" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Galeria</TabsTrigger>
-                  <TabsTrigger value="agendamentos" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Agenda</TabsTrigger>
-                  <TabsTrigger value="insights" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Insights</TabsTrigger>
-                  <TabsTrigger value="trimestre" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Trimestral</TabsTrigger>
-                </TabsList>
+          <div className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="w-full max-w-sm grid grid-cols-4 mx-auto bg-muted/40 p-1 rounded-full border border-border/50">
+                <TabsTrigger value="calendario" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Galeria</TabsTrigger>
+                <TabsTrigger value="agendamentos" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Agenda</TabsTrigger>
+                <TabsTrigger value="insights" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Insights</TabsTrigger>
+                <TabsTrigger value="trimestre" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Trimestral</TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="calendario" className="mt-0">
-                  <CalendarView>
-                    <Card className="border-none shadow-none bg-transparent">
-                      <CardContent className="p-0 space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3 bg-card/30 p-2 rounded-2xl border border-border/40">
-                          <div className="flex items-center gap-3">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
-                            <h2 className="text-sm font-bold capitalize w-32 text-center">{format(currentDate, 'MMMM yyyy', { locale: ptBR })}</h2>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="h-8 text-[10px] font-bold text-destructive border-destructive/20 hover:bg-destructive/10 gap-1.5"
-                              onClick={handleClearGallery}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> LIMPAR GALERIA
-                            </Button>
-                          </div>
+              <TabsContent value="calendario" className="mt-0">
+                <CalendarView>
+                  <Card className="border-none shadow-none bg-transparent">
+                    <CardContent className="p-0 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-card/30 p-2 rounded-2xl border border-border/40">
+                        <div className="flex items-center gap-3">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+                          <h2 className="text-sm font-bold capitalize w-32 text-center">{format(currentDate, 'MMMM yyyy', { locale: ptBR })}</h2>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
                         </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-[10px] font-bold text-destructive border-destructive/20 hover:bg-destructive/10 gap-1.5"
+                            onClick={handleClearGallery}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> LIMPAR GALERIA
+                          </Button>
+                        </div>
+                      </div>
 
-                        <Suspense fallback={<SkeletonList />}>
-                          <PostList 
-                            daysInMonth={daysInMonth}
-                            startingDay={startingDay}
-                            postsByDay={postsByDay}
-                            onDrop={handleDrop}
-                            setEditorState={setEditorState}
-                            draggedPostId={draggedPostId}
-                            getPostTimeFormatted={getPostTimeFormatted}
-                            statusOptions={STATUS_OPTIONS_LOCAL}
-                            onDragStart={handleDragStart}
-                          />
-                        </Suspense>
-                      </CardContent>
-                    </Card>
+                      <Suspense fallback={<SkeletonList />}>
+                        <PostList 
+                          daysInMonth={daysInMonth}
+                          startingDay={startingDay}
+                          postsByDay={postsByDay}
+                          onDrop={handleDrop}
+                          setEditorState={setEditorState}
+                          draggedPostId={draggedPostId}
+                          getPostTimeFormatted={getPostTimeFormatted}
+                          statusOptions={STATUS_OPTIONS_LOCAL}
+                          onDragStart={handleDragStart}
+                        />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
 
-                    <Sidebar 
-                      setShowEstudioIA={setShowEstudioIA}
-                      setShowPlanoSemanal={setShowPlanoSemanal}
-                      setShowNicheConfig={setShowNicheConfig}
-                      profileInfo={profileInfo}
-                      posts={posts}
-                      setCurrentDate={setCurrentDate}
+                  <Sidebar 
+                    isOpen={showSidebar}
+                    onClose={() => setShowSidebar(false)}
+                    setShowEstudioIA={setShowEstudioIA}
+                    setShowPlanoSemanal={setShowPlanoSemanal}
+                    setShowNicheConfig={setShowNicheConfig}
+                    profileInfo={profileInfo}
+                    posts={posts}
+                    setCurrentDate={setCurrentDate}
+                  />
+                </CalendarView>
+              </TabsContent>
+
+              <TabsContent value="agendamentos">
+                <div className="max-w-2xl mx-auto">
+                    <CalendarioAgendamentos 
+                      posts={posts} 
+                      bufferPosts={bufferPosts}
+                      loadingBuffer={loadingBuffer}
+                      onPostClick={(p: any) => {
+                          const dayPosts = posts.filter(pp => format(new Date(p.date), 'yyyy-MM-dd') === format(new Date(p.date), 'yyyy-MM-dd'));
+                          setEditorState({ posts: dayPosts.length ? dayPosts : [p], index: dayPosts.findIndex(pp => pp.id === p.id) || 0 });
+                      }} 
                     />
-                  </CalendarView>
-                </TabsContent>
+                </div>
+              </TabsContent>
 
-                <TabsContent value="agendamentos">
-                  <div className="max-w-2xl mx-auto">
-                      <CalendarioAgendamentos 
-                        posts={posts} 
-                        bufferPosts={bufferPosts}
-                        loadingBuffer={loadingBuffer}
-                        onPostClick={(p: any) => {
-                            const dayPosts = posts.filter(pp => format(new Date(p.date), 'yyyy-MM-dd') === format(new Date(p.date), 'yyyy-MM-dd'));
-                            setEditorState({ posts: dayPosts.length ? dayPosts : [p], index: dayPosts.findIndex(pp => pp.id === p.id) || 0 });
-                        }} 
-                      />
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="insights">
-                  {activeTab === "insights" && <InstagramInsights igId={profileInfo?.igId} />}
-                </TabsContent>
-                <TabsContent value="trimestre">
-                  <PlanejamentoTrimestral />
-                </TabsContent>
-              </Tabs>
-            </div>
+              <TabsContent value="insights">
+                {activeTab === "insights" && <InstagramInsights igId={profileInfo?.igId} />}
+              </TabsContent>
+              <TabsContent value="trimestre">
+                <PlanejamentoTrimestral />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </main>
