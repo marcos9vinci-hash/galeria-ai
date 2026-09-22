@@ -510,10 +510,11 @@ export default function GaleriaIA() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col h-full bg-zinc-950 text-zinc-100 overflow-hidden">
       <AppHeader
         title="Galeria IA"
         description="Estúdio Criativo de Tatuagem"
+        activeTab={activeTab}
         profileInfo={profileInfo}
         igConnected={igConnected}
         hasPublishPerm={hasPublishPerm}
@@ -579,87 +580,68 @@ export default function GaleriaIA() {
           <div className="flex h-screen items-center justify-center text-destructive">Erro de autenticação. Tente novamente.</div>
         ) : (
           <div className="w-full">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="w-full max-w-sm grid grid-cols-4 mx-auto bg-muted/40 p-1 rounded-full border border-border/50">
-                <TabsTrigger value="calendario" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Galeria</TabsTrigger>
-                <TabsTrigger value="agendamentos" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Agenda</TabsTrigger>
-                <TabsTrigger value="insights" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Insights</TabsTrigger>
-                <TabsTrigger value="trimestre" className="rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm">Trimestral</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="calendario" className="mt-0">
-                <CalendarView>
-                  <Card className="border-none shadow-none bg-transparent">
-                    <CardContent className="p-0 space-y-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3 bg-card/30 p-2 rounded-2xl border border-border/40">
-                        <div className="flex items-center gap-3">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
-                          <h2 className="text-sm font-bold capitalize w-32 text-center">{format(currentDate, 'MMMM yyyy', { locale: ptBR })}</h2>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-[10px] font-bold text-destructive border-destructive/20 hover:bg-destructive/10 gap-1.5"
-                            onClick={handleClearGallery}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> LIMPAR GALERIA
-                          </Button>
-                        </div>
+            {activeTab === 'calendario' && (
+              <CalendarView>
+                <Card className="border-none shadow-none bg-transparent">
+                  <CardContent className="p-0 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-800">
+                      <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-300 hover:text-white" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+                        <h2 className="text-sm font-bold capitalize w-36 text-center text-white">{format(currentDate, 'MMMM yyyy', { locale: ptBR })}</h2>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-300 hover:text-white" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
                       </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-[10px] font-bold text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                          onClick={handleClearGallery}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> LIMPAR GALERIA
+                        </Button>
+                      </div>
+                    </div>
 
-                      <Suspense fallback={<SkeletonList />}>
-                        <PostList 
-                          daysInMonth={daysInMonth}
-                          startingDay={startingDay}
-                          postsByDay={postsByDay}
-                          onDrop={handleDrop}
-                          setEditorState={setEditorState}
-                          draggedPostId={draggedPostId}
-                          getPostTimeFormatted={getPostTimeFormatted}
-                          statusOptions={STATUS_OPTIONS_LOCAL}
-                          onDragStart={handleDragStart}
-                        />
-                      </Suspense>
-                    </CardContent>
-                  </Card>
+                    <Suspense fallback={<SkeletonList />}>
+                      <PostList 
+                        daysInMonth={daysInMonth}
+                        startingDay={startingDay}
+                        postsByDay={postsByDay}
+                        onDrop={handleDrop}
+                        setEditorState={setEditorState}
+                        draggedPostId={draggedPostId}
+                        getPostTimeFormatted={getPostTimeFormatted}
+                        statusOptions={STATUS_OPTIONS_LOCAL}
+                        onDragStart={handleDragStart}
+                      />
+                    </Suspense>
+                  </CardContent>
+                </Card>
+              </CalendarView>
+            )}
 
-                  <Sidebar 
-                    isOpen={showSidebar}
-                    onClose={() => setShowSidebar(false)}
-                    setShowEstudioIA={setShowEstudioIA}
-                    setShowPlanoSemanal={setShowPlanoSemanal}
-                    setShowNicheConfig={setShowNicheConfig}
-                    profileInfo={profileInfo}
-                    posts={posts}
-                    setCurrentDate={setCurrentDate}
-                  />
-                </CalendarView>
-              </TabsContent>
+            {activeTab === 'agendamentos' && (
+              <div className="max-w-2xl mx-auto">
+                <CalendarioAgendamentos 
+                  posts={posts} 
+                  bufferPosts={bufferPosts}
+                  loadingBuffer={loadingBuffer}
+                  onPostClick={(p: any) => {
+                      const dayPosts = posts.filter(pp => format(new Date(p.date), 'yyyy-MM-dd') === format(new Date(p.date), 'yyyy-MM-dd'));
+                      setEditorState({ posts: dayPosts.length ? dayPosts : [p], index: dayPosts.findIndex(pp => pp.id === p.id) || 0 });
+                  }} 
+                />
+              </div>
+            )}
 
-              <TabsContent value="agendamentos">
-                <div className="max-w-2xl mx-auto">
-                    <CalendarioAgendamentos 
-                      posts={posts} 
-                      bufferPosts={bufferPosts}
-                      loadingBuffer={loadingBuffer}
-                      onPostClick={(p: any) => {
-                          const dayPosts = posts.filter(pp => format(new Date(p.date), 'yyyy-MM-dd') === format(new Date(p.date), 'yyyy-MM-dd'));
-                          setEditorState({ posts: dayPosts.length ? dayPosts : [p], index: dayPosts.findIndex(pp => pp.id === p.id) || 0 });
-                      }} 
-                    />
-                </div>
-              </TabsContent>
+            {activeTab === 'insights' && (
+              <InstagramInsights igId={profileInfo?.igId} />
+            )}
 
-              <TabsContent value="insights">
-                {activeTab === "insights" && <InstagramInsights igId={profileInfo?.igId} />}
-              </TabsContent>
-              <TabsContent value="trimestre">
-                <PlanejamentoTrimestral />
-              </TabsContent>
-            </Tabs>
+            {activeTab === 'trimestre' && (
+              <PlanejamentoTrimestral />
+            )}
           </div>
         )}
       </main>
@@ -671,6 +653,20 @@ export default function GaleriaIA() {
       >
         <Plus className="w-6 h-6" />
       </Button>
+
+      {/* Sidebar Drawer fora da árvore principal para evitar clipping */}
+      <Sidebar 
+        isOpen={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        setShowEstudioIA={setShowEstudioIA}
+        setShowPlanoSemanal={setShowPlanoSemanal}
+        setShowNicheConfig={setShowNicheConfig}
+        profileInfo={profileInfo}
+        posts={posts}
+        setCurrentDate={setCurrentDate}
+      />
 
       <InstagramIntegracaoModal 
         open={showIgModal} 
@@ -732,3 +728,4 @@ export default function GaleriaIA() {
     </div>
   );
 }
+
