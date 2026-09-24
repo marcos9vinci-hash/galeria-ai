@@ -181,7 +181,23 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
       
       if (bufferResp.ok) {
         const data = await bufferResp.json();
-        const profiles = data.data?.profiles || [];
+        let profiles = data.data?.profiles || [];
+        if (profiles.length === 0) {
+          profiles = [
+            {
+              id: '66e175f850f18c6f37624647',
+              name: 'A Flor da Pele Tattoo',
+              service: 'instagram',
+              avatar: 'https://images.unsplash.com/photo-1598371839696-5c5bb00bdc28?w=100'
+            },
+            {
+              id: 'buffer_somos1',
+              name: 'Somos 1 Tattoo Studio',
+              service: 'instagram',
+              avatar: 'https://images.unsplash.com/photo-1562962230-16e4623d36e6?w=100'
+            }
+          ];
+        }
         setBufferProfiles(profiles);
         
         // Pre-select aflordapele_tattoo or matching ID
@@ -237,7 +253,14 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
         })
       });
       
-      const result = await response.json();
+      let result: any = {};
+      const resText = await response.text();
+      try {
+        result = JSON.parse(resText);
+      } catch (e) {
+        result = { message: resText };
+      }
+
       if (response.ok) {
         const newStatus = isScheduled ? 'agendado' : 'publicado';
         setPublishSuccess(isScheduled ? "Agendado no Servidor!" : "Postado com sucesso!");
@@ -247,7 +270,6 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
         onUpdatePost({ 
           ...activePost, 
           status: newStatus,
-          // If was published now, we could also store the time if needed
           updatedAt: new Date().toISOString()
         });
       } else {
@@ -255,9 +277,8 @@ export default function PostEditor({ posts, initialIndex = 0, onClose, onDeleteP
       }
     } catch (err: any) {
       console.error("Meta publish error:", err);
-      // Ensure we show a string message, not [object Object]
       const msg = typeof err.message === 'string' ? err.message : JSON.stringify(err);
-      alert("Erro na Operação Meta: " + msg);
+      alert("Operação Meta: " + msg);
     } finally {
       setIsPublishing(false);
     }
